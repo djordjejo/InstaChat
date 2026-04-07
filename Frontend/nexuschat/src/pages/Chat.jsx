@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { getChats, viewChat} from "../api/chatsApi";
 
 function Avatar({ initials, size = "md" }) {
     const sizes = {
@@ -16,17 +17,43 @@ function Avatar({ initials, size = "md" }) {
 }
 
 export default function Chat() {
-    const { user, logout } = useAuth();
-    console.log("Current user in Chat component:", user);
+    const { user, token, logout } = useAuth();
+    const [chats, setChats] = useState([]);
+    const [chat, setChat] = useState(null);
+    const [activeChatId, setActiveChatId] = useState(null);
     const navigate = useNavigate();
     const [sidebarView, setSidebarView] = useState("chats");
 
     const initials = user.slice(0, 2).toUpperCase();
 
+    useEffect(() => {
+        const fetchChats = async () =>{
+            const ch = await getChats(token);
+            setChats(ch ?? [])
+        };
+        fetchChats();
+    }, [])
+
+    useEffect(() => {
+        if (!activeChatId) return; 
+
+        const fetchChat = async () =>{
+            const chat = await viewChat(token, activeChatId);
+            setChat(chat ?? null);
+        };
+        fetchChat();
+    }, [activeChatId])
+
+
     const handleLogout = () => {
         logout();
         navigate("/login");
     };
+
+    const handleStartChat = (chatId) => {
+        console.log("Starting chat with ID:", chatId);
+        setActiveChatId(chatId);
+    }
 
     return (
         <div className="flex h-screen w-full overflow-hidden bg-[#13141a] text-gray-100">
@@ -69,17 +96,30 @@ export default function Chat() {
                         </button>
                     </nav>
                 </div>
-
                 {/* Lista */}
                 <div className="flex-1 overflow-y-auto px-4 pt-5">
                     {sidebarView === "chats" && (
                         <>
                             <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-gray-500">Prethodne poruke</p>
-                            <div className="flex flex-col items-center justify-center gap-2 pt-12 text-center">
-                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-600">
-                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                                </svg>
-                                <p className="text-xs text-gray-600">Nema prethodnih poruka</p>
+                            <div className="flex flex-col gap-1">
+                                {chats.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center gap-2 pt-12 text-center">
+                                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-600">
+                                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                                        </svg>
+                                        <p className="text-xs text-gray-600">Nema prethodnih poruka</p>
+                                    </div>
+                                ) : (
+                                    chats.map((chat) => (
+                                        <div key={chat.conversationsId} onClick={ () => handleStartChat(chat.conversationsId)} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition hover:bg-white/5 cursor-pointer">
+                                            <Avatar initials={chat.avatarUrl} size="sm" />
+                                            <div>
+                                                <p className="font-medium text-gray-100">{chat.conversationName}</p>
+                                                <p className="text-xs text-gray-500">{chat.lastMessage}</p>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
                             </div>
                         </>
                     )}
@@ -147,17 +187,48 @@ export default function Chat() {
             </aside>
 
             {/* ── MAIN ── */}
-            <main className="flex flex-1 flex-col items-center justify-center gap-4">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-purple-500/20 bg-purple-600/20">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-purple-400">
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                    </svg>
-                </div>
-                <div className="text-center">
-                    <p className="text-base font-semibold text-gray-300">Dobrodošao, {user}</p>
-                    <p className="mt-1 text-sm text-gray-600">Izaberi razgovor ili pokreni novi</p>
-                </div>
-            </main>
+            {chat == null ? (
+                <main className="flex flex-1 flex-col items-center justify-center gap-4">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-purple-500/20 bg-purple-600/20">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-purple-400">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                        </svg>
+                    </div>
+                    <div className="text-center">
+                        <p className="text-base font-semibold text-gray-300">Dobrodošao, {}</p>
+                        <p className="mt-1 text-sm text-gray-600">Izaberi razgovor ili pokreni novi</p>
+                    </div>
+                </main>
+            ) : (
+                <main className="flex flex-1 flex-col">
+                    <div className="flex items-center gap-3 border-b border-white/5 bg-[#1a1b23] px-5 py-3">
+                        <Avatar initials={chat?.conversationName.slice(0,2).toUpperCase()} size="sm" />
+                        <div>
+                            <p className="text-sm font-semibold text-gray-100">{chat?.conversationName}</p>
+                            <p className="text-xs text-green-400">Online</p>
+                        </div>
+                    </div>
+
+                    {/* Poruke */}
+                    <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-3">
+                        <p className="text-xs text-gray-600 text-center">Početak razgovora</p>
+                    </div>
+
+                    {/* Input */}
+                    <div className="flex items-center gap-3 border-t border-white/5 bg-[#1a1b23] px-4 py-3">
+                        <input
+                            type="text"
+                            placeholder="Napiši poruku..."
+                            className="flex-1 rounded-full bg-white/5 px-4 py-2 text-sm text-gray-100 outline-none border border-white/5 focus:border-purple-500/50"
+                        />
+                        <button className="flex h-9 w-9 items-center justify-center rounded-full bg-purple-600 hover:bg-purple-500 transition">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                            </svg>
+                        </button>
+                    </div>
+                </main>
+            )}
         </div>
     );
 }
