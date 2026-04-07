@@ -8,8 +8,8 @@ export default function LogIn() {
     const navigate = useNavigate();
 
     const [user, setUser] = useState({
-        email: "",
-        password: "",
+        "email": "",
+        "password": "",
     });
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
@@ -28,7 +28,8 @@ export default function LogIn() {
                 email: user.email,
                 password: user.password,
             });
-            login(response.data.user, response.data.token);
+            console.log("Attempting to log in with:", response.data.username +" " + response.data.token);
+            login(response.data.username, response.data.token);
             navigate("/");
         } catch (err) {
             setError(
