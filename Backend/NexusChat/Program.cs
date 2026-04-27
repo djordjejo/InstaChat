@@ -3,7 +3,7 @@ using API.Services;
 using Application.Interfaces;
 using Application.Users.Commands.Register;
 using Domain.Interfaces;
-using Infrastructure.Persistence;
+using Infrastructure.Persistence.DBContext;
 using Infrastructure.Persistence.Repository;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
