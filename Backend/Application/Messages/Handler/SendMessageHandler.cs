@@ -28,7 +28,7 @@ namespace Application.Messages.Handler
             var message = new Message
             {
                 ConversationId = command.ConversationId,
-                SenderId = command.senderId,
+                SenderId = command.SenderId,
                 Content = command.Content,
                 SentAt = DateTime.UtcNow,
                 IsEdited = false,
@@ -38,7 +38,7 @@ namespace Application.Messages.Handler
             await _unitOfWork.Messages.AddAsync(message);
             await _unitOfWork.Commit(cancellationToken);
 
-            var sender = await _unitOfWork.Users.GetByIdAsync(command.senderId);
+            var sender = await _unitOfWork.Users.GetByIdAsync(command.SenderId);
 
             var messageDto = new MessageDto
             {

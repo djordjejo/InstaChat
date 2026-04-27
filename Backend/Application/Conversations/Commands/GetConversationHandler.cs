@@ -25,11 +25,13 @@ namespace Application.Conversations.Commands
 
             return new ConversationDto
             {
+                ConversationId = conversation.Id,
                 ConversationName = conversation.Name,
                 Messages = conversation.Messages.Select(x => new MessageDto
                 {
                     MessageId = x.Id,
-                    Content = x.Content
+                    Content = x.Content,
+                    SenderUsername = x.Sender.Username
                 }).ToList(),
                 Members = conversation.Members.Select(x => new MemberDto
                 {

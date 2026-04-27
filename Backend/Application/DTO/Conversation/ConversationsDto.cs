@@ -9,7 +9,7 @@ namespace Application.DTO.Conversation
 {
     public class ConversationsDto
     {
-        public Guid Id { get; set; }
+        public Guid ConversationsId { get; set; }
         public string ConversationName { get; set; }
         public IEnumerable<MemberDto>? Members { get; set; }
         public string AvatarUrl { get; set; }

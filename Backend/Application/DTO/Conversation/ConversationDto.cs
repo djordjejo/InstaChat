@@ -10,7 +10,7 @@ namespace Application.DTO.Conversation
 {
     public class ConversationDto
     {
-        public Guid Id { get; set; }
+        public Guid ConversationId { get; set; }
         public string ConversationName { get; set; }
         public bool IsGroup { get; set; }
         public DateTime CreatedAt { get; set; }

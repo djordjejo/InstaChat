@@ -1,4 +1,5 @@
 ﻿using Application.Messages.Command;
+using Application.Messages.Handler;
 using Domain.Entities;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -12,6 +13,7 @@ using System.Threading.Tasks;
 
 namespace API.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("/api/[controller]")]
    
@@ -28,7 +30,7 @@ namespace API.Controllers
         public async Task<IActionResult> SendMessage(SendMessageCommand command)
         {
             var senderId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            command.senderId = senderId;
+            command.SenderId = senderId;
             var result = await _mediator.Send(command);
 
             return Ok(result);

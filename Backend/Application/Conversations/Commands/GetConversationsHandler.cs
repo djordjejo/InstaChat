@@ -1,20 +1,8 @@
 ﻿using Application.Conversations.Queries;
-using Application.DTO;
 using Application.DTO.Conversation;
 using Application.DTO.Member;
-using Application.DTO.Messages;
-using Domain.Entities;
 using Domain.Interfaces;
-using Infrastructure.Persistence.Repository;
 using MediatR;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Net.Http.Headers;
-using System.Text;
-using System.Threading.Tasks;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace Application.Conversations.Commands
 {
@@ -34,7 +22,12 @@ namespace Application.Conversations.Commands
 
             var result = conversations.Select(x => new ConversationsDto
             {
+                ConversationsId = x.Id,
                 ConversationName = x.Name,
+                Members = x.Members.Select(member => new MemberDto { 
+                    UserId = member.Id,
+                    Name = member.User.Username
+                })
 
             }).ToList();
 

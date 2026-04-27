@@ -6,7 +6,7 @@ namespace Application.Messages.Command
 {
     public class SendMessageCommand : IRequest<MessageDto>
     {
-        public Guid senderId { get; set; }
+        public Guid SenderId { get; set; }
         public Guid ConversationId { get; set; }
         public string Content { get; set; }
     }

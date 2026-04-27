@@ -26,7 +26,7 @@ namespace API.Controllers
             public async Task<IActionResult> Register(RegisterCommand command)
             {
                 var result = await _mediator.Send(command);
-                return Created("", result); // 201 Created
+                return Created("", result); 
             }
 
             [HttpPost("login")]

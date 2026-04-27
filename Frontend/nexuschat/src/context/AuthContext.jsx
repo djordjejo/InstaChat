@@ -1,6 +1,7 @@
 import { createContext, useContext,  useState } from "react";
 
-export const AuthContext = createContext(); // => createContext() vraca objekat, zato se stavlja veliko prvo pocetno slovo u imenu variable
+export const AuthContext = createContext(); 
+// => createContext() vraca objekat, zato se stavlja veliko prvo pocetno slovo u imenu variable
 // the default value set when creating the context is only used if a compomennt that was not weapped by the Provider components
 //  tries to access the context value
 

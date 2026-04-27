@@ -35,7 +35,6 @@ public class CreateConversationHandler : IRequestHandler<CreateConversationQuery
         await _unitOfWork.Conversations.AddAsync(conversation);
         await _unitOfWork.Commit(cancellationToken);
 
-        // 2. Dodaj kreatora kao Admin člana
         var creatorMember = new ConversationMember
         {
             UserId = command.CreatedById,
@@ -46,10 +45,9 @@ public class CreateConversationHandler : IRequestHandler<CreateConversationQuery
 
         await _unitOfWork.ConversationMembers.AddAsync(creatorMember);
 
-        // 3. Dodaj ostale članove
         foreach (var memberId in command.MemberIds)
         {
-            if (memberId == command.CreatedById) continue; // kreator vec dodat
+            if (memberId == command.CreatedById) continue; 
 
             var member = new ConversationMember
             {
@@ -64,10 +62,9 @@ public class CreateConversationHandler : IRequestHandler<CreateConversationQuery
 
         await _unitOfWork.Commit(cancellationToken);
 
-        // 4. Vrati DTO
         return new ConversationDto
         {
-            Id = conversation.Id,
+            ConversationId = conversation.Id,
             ConversationName = conversation.Name,
             IsGroup = conversation.IsGroup,
             CreatedAt = conversation.CreatedAt

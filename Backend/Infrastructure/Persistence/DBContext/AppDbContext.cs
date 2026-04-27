@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Infrastructure.Persistence
+namespace Infrastructure.Persistence.DBContext
 {
     public class AppDbContext : DbContext
     {
@@ -52,7 +52,6 @@ namespace Infrastructure.Persistence
                 .HasForeignKey(m => m.SenderId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Max length
             modelBuilder.Entity<User>()
                 .Property(u => u.Username)
                 .HasMaxLength(50);
@@ -65,7 +64,6 @@ namespace Infrastructure.Persistence
                 .Property(m => m.Content)
                 .HasMaxLength(2000);
 
-            // Unique email
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Email)
                 .IsUnique();

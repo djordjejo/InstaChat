@@ -22,7 +22,6 @@ namespace API.Hubs
         public override async Task OnConnectedAsync()
         {
             var userId = Guid.Parse(Context.User!.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            Console.WriteLine($"Korisnik {userId} se konektovao: na {Context.ConnectionId} konekcije");
             var user = await _unitOfWork.Users.GetByIdAsync(userId);
             if (user != null)
             {
@@ -41,8 +40,8 @@ namespace API.Hubs
         {
 
             var userId = Guid.Parse(Context.User!.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            Console.WriteLine($"Korisnik {userId} se konektovao: na {Context.ConnectionId} konekcije");
             var user = await _unitOfWork.Users.GetByIdAsync(userId);
+
             if (user != null)
             {
                 user.IsOnline = false;

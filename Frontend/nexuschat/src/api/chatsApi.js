@@ -1,12 +1,8 @@
 import axiosInstance from './axiosInstance'; // ili kako se već zove fajl
 
-export const getChats = async (token) => {
+export const getChats = async () => {
     try{
-        const response = await axiosInstance.get("/conversation", {
-            headers: {
-                "Authorization": `Bearer ${token}`,
-            }
-        });
+        const response = await axiosInstance.get("/conversation");
         return response.data;
     }catch(error)
     {
@@ -14,16 +10,11 @@ export const getChats = async (token) => {
     }
 }
 
-export const createChat = async (token,memberId,chatName) => {
+export const createChat = async (memberId,chatName) => {
     try{
         const response = await axiosInstance.post("/conversation/create",{
             conversationName: chatName,
             memberId: memberId
-        },{
-            headers: {
-                "Authorization": `Bearer ${token}`,
-            }
-            
         });
         return response.data;
     }catch(error)
@@ -31,25 +22,17 @@ export const createChat = async (token,memberId,chatName) => {
         throw new Error("Failed to create a chat: " + error.message);
     }
 }
-export const deleteChat = async (token, chatId) => {
+export const deleteChat = async (chatId) => {
     try{
-        await axiosInstance.delete(`/conversation/${chatId}`, {
-            headers: {
-                "Authorization": `Bearer ${token}`,
-            }
-        });
+        await axiosInstance.delete(`/conversation/${chatId}`);
     }catch(error)
     {
         throw new Error("Failed to delete a chat: " + error.message);
     }
 }
-export const viewChat = async (token, chatId) => {
+export const viewChat = async (chatId) => {
     try{
-       const response = await axiosInstance.get(`/conversation/getConversation/${chatId}`, {
-          headers: {
-              "Authorization": `Bearer ${token}`,
-    }
-});
+       const response = await axiosInstance.get(`/conversation/getConversation/${chatId}`, );
         return response.data;
 
     }catch(error)

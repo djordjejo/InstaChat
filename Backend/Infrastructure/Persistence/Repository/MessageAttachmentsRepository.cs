@@ -1,5 +1,6 @@
 ﻿using Domain.Entities;
 using Domain.Interfaces;
+using Infrastructure.Persistence.DBContext;
 
 namespace Infrastructure.Persistence.Repository
 {
