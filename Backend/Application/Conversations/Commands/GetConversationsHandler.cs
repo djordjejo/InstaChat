@@ -26,7 +26,8 @@ namespace Application.Conversations.Commands
                 ConversationName = x.Name,
                 Members = x.Members.Select(member => new MemberDto { 
                     UserId = member.Id,
-                    Name = member.User.Username
+                    Name = member.User.Username,
+                    IsOnline = member.User.IsOnline,
                 })
 
             }).ToList();

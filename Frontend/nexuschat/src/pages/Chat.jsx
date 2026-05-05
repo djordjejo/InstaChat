@@ -1,7 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { getChats, viewChat } from "../api/chatsApi";
+import { sendMessage } from "../api/messageApi";
+import { createConnection } from "../services/signalRService";
+
 
 function Avatar({ initials, size = "md" }) {
     const sizes = {
@@ -23,9 +26,35 @@ export default function Chat() {
     const [activeChatId, setActiveChatId] = useState(null);
     const navigate = useNavigate();
     const [sidebarView, setSidebarView] = useState("chats");
-
+    const [messages, setMessages] = useState([]);
+    
+    const [messageTxt, setMessageTxt] = useState("");
+    
     const initials = user.slice(0, 2).toUpperCase();
+    const [connection, setConnection] = useState(null);
+    
+    // NOVO: Map koji čuva online korisnike. Ključ je userId, vrednost je { userId, username }.
+    // Map je odabran umesto niza jer omogućava O(1) lookup i uklanjanje po ID-u,
+    // a istovremeno čuva pun objekat o korisniku (ne samo ID).
+    const [onlineUsers, setOnlineUsers] = useState(new Map());
 
+    const messagesEndRef = useRef(null);
+    
+    // Ref koji nas štiti od StrictMode dvostrukog mount-a u dev modu.
+    // Ako je konekcija već u toku, drugi prolaz kroz useEffect je preskače.
+    // Koristim useRef umesto useState jer promena ovog flag-a ne treba da
+    // izaziva re-render - to je čisto interno pamćenje komponente.
+    const connectingRef = useRef(false);
+    
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+    
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages]);
+
+    // Uzima sve čatove pri učitavanju
     useEffect(() => {
         const fetchChats = async () => {
             const ch = await getChats();
@@ -34,28 +63,128 @@ export default function Chat() {
         fetchChats();
     }, []);
 
+    // SignalR konekcija - sve real-time stvari su ovde.
     useEffect(() => {
-        if (!activeChatId) return;
+        if (connectingRef.current) return;
+        connectingRef.current = true;
+        
+        const token = localStorage.getItem("token");
+        const conn = createConnection(token);
+
+        // Registruj SVE handlere PRE nego što pozoveš start().
+        // Handleri se samo "pamte" dok se ne uspostavi konekcija - 
+        // nije problem registrovati ih unapred. Ovako je tok jasniji.
+        
+        conn.on("ReceiveMessage", (message) => {
+            setMessages(prev => [...prev, message]);
+        });
+        
+        // Bitno: pravimo NOVI Map svaki put jer React poredi po referenci.
+        // Da samo modifikujemo postojeći Map, React ne bi shvatio da se state promenio.
+        conn.on("UserOnline", (onlineUser) => {
+            setOnlineUsers(prev => {
+                const next = new Map(prev);
+                next.set(onlineUser.userId, onlineUser);
+                console.log("Korisnik online:", onlineUser);
+                return next;
+            });
+        });
+        
+        
+        conn.on("UserOffline", (userId) => {
+            setOnlineUsers(prev => {
+                const next = new Map(prev);
+                next.delete(userId);
+                return next;
+            });
+        });
+
+        // Sad pokreni konekciju
+        conn.start()
+            .then(async () => {
+                setConnection(conn);
+                
+                // NOVO: Odmah po konektovanju, pitaj server za snapshot online korisnika.
+                // Bez ovoga ne bismo znali ko je bio online pre nego što smo se konektovali -
+                // SignalR događaji su fire-and-forget, ne istorijski.
+                try {
+                    const initial = await conn.invoke("GetOnlineUsers");
+                    // Pretvori niz objekata u Map za brz lookup.
+                    const usersMap = new Map();
+                    initial.forEach(u => usersMap.set(u.userId, u));
+                    setOnlineUsers(usersMap);
+                } catch (err) {
+                    console.error("Greška pri uzimanju online korisnika:", err);
+                }
+            })
+            .catch(err => console.error("SignalR greska:", err));
+
+        // Cleanup - ovo se izvrši kad komponenta nestane (ili kod StrictMode dvostrukog mount-a).
+        return () => {
+            connectingRef.current = false;
+            conn.stop();
+        };
+    }, []);
+
+    // Učitavanje konkretnog čata kad korisnik klikne na njega u sidebar-u
+    useEffect(() => {
+        if (!activeChatId || !connection) return;
+
+        // Napusti prethodnu konverzaciju (ako je bilo neke).
+        // Ovo treba da zovemo na PRETHODNI activeChatId, ali u praksi
+        // SignalR sam upravlja grupama po connectionId, pa nije kritično.
+        connection.invoke("LeaveConversation", activeChatId);
+
         const fetchChat = async () => {
-            const c = await viewChat(activeChatId);
-            setChat(c ?? null);
+            const conversation = await viewChat(activeChatId);
+            setChat(conversation ?? null);
+            setMessages(conversation?.messages ?? []);
         };
         fetchChat();
-    }, [activeChatId]);
+
+        connection.invoke("JoinConversation", activeChatId);
+    }, [activeChatId, connection]);
 
     const handleLogout = () => {
         logout();
         navigate("/login");
     };
-
+    
     const handleStartChat = (chatId) => {
         setActiveChatId(chatId);
     };
 
+    const handleSendMessage = async (message) => {
+        if (!message.trim()) return;
+        // Prvo očisti input - daje osećaj brze, responsivne aplikacije.
+        setMessageTxt("");
+        
+        try {
+            await sendMessage(activeChatId, message);
+        } catch (err) {
+            console.error("Slanje nije uspelo:", err);
+            // Ako padne, vrati tekst u input da korisnik ne izgubi šta je napisao.
+            setMessageTxt(message);
+        }
+    };
+
+    // NOVO: Izvedena vrednost - filtriraj sebe iz liste online korisnika.
+    // Nema smisla da se sam vidiš u listi "aktivnih" - ti znaš da si online.
+    // Ovo se računa pri svakom renderu, što je u redu jer je operacija jeftina
+    // (par filtera nad malom listom). Za veće liste bi useMemo imao smisla.
+    const otherOnlineUsers = Array.from(onlineUsers.values())
+        .filter(u => u.username !== user);
+
     return (
-        <div style={{ backgroundColor: "#f0f7ff" }} className="flex h-screen w-full overflow-hidden text-[#1e293b]">
+        <div 
+        style={{ 
+        background: "linear-gradient(135deg, #e0f2fe 0%, #ede9fe 50%, #fce7f3 100%)" 
+    }} 
+    className="flex h-screen w-full overflow-hidden text-[#1e293b]"
+        className="flex h-screen w-full overflow-hidden text-[#1e293b]"
+    >
             {/* SIDEBAR */}
-            <aside className="flex w-64 shrink-0 flex-col border-r border-black/[0.06] bg-[#e0effe]">
+<aside className="flex w-64 shrink-0 flex-col border-r border-black/[0.06] bg-[#e0effe]">
 
                 {/* Korisnik */}
                 <div className="flex items-center gap-3 border-b border-black/[0.06] px-5 py-4">
@@ -66,7 +195,6 @@ export default function Chat() {
                     </div>
                 </div>
 
-                {/* Menu */}
                 <div className="px-4 pt-5">
                     <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-[#64748b]">Menu</p>
                     <nav className="flex flex-col gap-0.5">
@@ -89,11 +217,16 @@ export default function Chat() {
                                 <path d="M16 3.13a4 4 0 0 1 0 7.75M21 21v-2a4 4 0 0 0-3-3.85" />
                             </svg>
                             Aktivni korisnici
+                            {/* NOVO: Mali badge sa brojem online korisnika - lep UX detalj */}
+                            {otherOnlineUsers.length > 0 && (
+                                <span className="ml-auto rounded-full bg-green-500 px-2 py-0.5 text-[10px] font-semibold text-white">
+                                    {otherOnlineUsers.length}
+                                </span>
+                            )}
                         </button>
                     </nav>
                 </div>
 
-                {/* Lista chatova */}
                 <div className="flex-1 overflow-y-auto px-4 pt-5">
                     {sidebarView === "chats" && (
                         <>
@@ -125,16 +258,46 @@ export default function Chat() {
                         </>
                     )}
 
+                    {/* NOVO: Pravilna implementacija aktivnih korisnika.
+                        Trenutni state otherOnlineUsers već sadrži sve online korisnike osim mene.
+                        Samo treba da odlučimo da li prikazati prazno stanje ili listu. */}
                     {sidebarView === "activeUsers" && (
                         <>
-                            <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-[#64748b]">Aktivni korisnici</p>
-                            <div className="flex flex-col items-center justify-center gap-2 pt-12 text-center">
-                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#94a3b8]">
-                                    <circle cx="9" cy="7" r="4" />
-                                    <path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
-                                </svg>
-                                <p className="text-xs text-[#94a3b8]">Nema aktivnih korisnika</p>
-                            </div>
+                            <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-[#64748b]">
+                                Aktivni korisnici
+                            </p>
+                            
+                            {otherOnlineUsers.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center gap-2 pt-12 text-center">
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#94a3b8]">
+                                        <circle cx="9" cy="7" r="4" />
+                                        <path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
+                                    </svg>
+                                    <p className="text-xs text-[#94a3b8]">Nema aktivnih korisnika</p>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col gap-1">
+                                    {otherOnlineUsers.map(u => (
+                                        <div
+                                            key={u.userId}
+                                            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-black/5 cursor-pointer"
+                                        >
+                                            {/* Avatar sa zelenom tačkicom u uglu - vizuelni indikator online statusa */}
+                                            <div className="relative">
+                                                <Avatar 
+                                                    initials={u.username?.slice(0, 2).toUpperCase()} 
+                                                    size="sm" 
+                                                />
+                                                <div className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-[#e0effe]"></div>
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="truncate font-medium text-[#1e293b]">{u.username}</p>
+                                                <p className="text-xs text-green-500">Online</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </>
                     )}
 
@@ -213,18 +376,45 @@ export default function Chat() {
                     </div>
 
                     {/* Poruke */}
-                    <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-3">
+                    <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-3 bg-[#f8fbff]">
                         <p className="text-xs text-[#94a3b8] text-center">Početak razgovora</p>
+                        {messages.map((message) => {
+                            const isMyMessage = message.senderUsername === user;
+                            return (
+                                <div key={message.messageId} className={`flex gap-2 ${isMyMessage ? "flex-row-reverse" : "flex-row"}`}>
+                                    <div className="h-8 w-8 rounded-full bg-blue-100 border border-blue-200 flex items-center justify-center text-xs font-semibold text-blue-700 shrink-0">
+                                        {message.senderUsername?.slice(0, 2).toUpperCase()}
+                                    </div>
+                                    <div className={`max-w-[60%]`}>
+                                        <p className={`text-[10px] mb-1 text-[#64748b] ${isMyMessage ? "text-right" : "text-left"}`}>
+                                            {message.senderUsername}
+                                        </p>
+                                        <div className={`px-4 py-2 rounded-2xl text-sm ${isMyMessage ? "bg-[#2563eb] text-white rounded-tr-sm" : "bg-white text-[#1e293b] border border-black/[0.06] rounded-tl-sm"}`}>
+                                            {message.content}
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                        <div ref={messagesEndRef}></div>
                     </div>
 
                     {/* Input */}
                     <div className="flex items-center gap-3 border-t border-black/[0.06] bg-[#e0effe] px-4 py-3">
                         <input
                             type="text"
+                            value={messageTxt}
+                            onChange={(e) => setMessageTxt(e.target.value)}
                             placeholder="Napiši poruku..."
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleSendMessage(messageTxt);
+                                }
+                            }}
                             className="flex-1 rounded-full bg-white px-4 py-2 text-sm text-[#1e293b] outline-none border border-black/[0.08] focus:border-blue-400"
                         />
-                        <button className="flex h-9 w-9 items-center justify-center rounded-full bg-[#2563eb] hover:bg-[#1d4ed8] transition">
+                        <button onClick={() => handleSendMessage(messageTxt)} className="flex h-9 w-9 items-center justify-center rounded-full bg-[#2563eb] hover:bg-[#1d4ed8] transition">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
                             </svg>

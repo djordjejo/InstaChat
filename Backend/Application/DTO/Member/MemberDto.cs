@@ -12,6 +12,7 @@ namespace Application.DTO.Member
         public Guid UserId { get; set; }
         public string Name{ get; set; } 
         public MemberRole Role { get; set; } 
-        
+        public bool IsOnline { get; set; }
+
     }
 }

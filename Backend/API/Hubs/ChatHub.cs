@@ -13,46 +13,67 @@ namespace API.Hubs
     public class ChatHub : Hub
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IOnlineUserTracker _onlineTracker;
 
-        public ChatHub(IUnitOfWork unitOfWork)
+        public ChatHub(IUnitOfWork unitOfWork, IOnlineUserTracker onlineUserTracker)
         {
             _unitOfWork = unitOfWork;
+            _onlineTracker = onlineUserTracker;
         }
 
+        public IReadOnlyCollection<OnlineUser> GetOnlineUsers()
+        {
+            return _onlineTracker.GetOnlineUsers().ToList();
+        }
         public override async Task OnConnectedAsync()
         {
             var userId = Guid.Parse(Context.User!.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
             var user = await _unitOfWork.Users.GetByIdAsync(userId);
             if (user != null)
             {
+                // Sad u tracker dodajemo i username, ne samo ID.
+                _onlineTracker.Add(userId, user.Username, Context.ConnectionId);
+
                 user.IsOnline = true;
                 user.LastSeen = DateTime.UtcNow;
                 await _unitOfWork.Users.UpdateAsync(user);
                 await _unitOfWork.Commit(Context.ConnectionAborted);
 
+                // Šaljemo objekat sa userId i username, ne samo userId.
+                // Frontend će ovo primiti kao { userId, username } - SignalR sam serijalizuje
+                // u camelCase JSON po default-u.
+                await Clients.Others.SendAsync("UserOnline", new { userId, username = user.Username });
             }
 
-            await Clients.Others.SendAsync("UserOnline", userId);
             await base.OnConnectedAsync();
+
 
         }
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
 
-            var userId = Guid.Parse(Context.User!.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var user = await _unitOfWork.Users.GetByIdAsync(userId);
+            var userId = _onlineTracker.GetUserByIdConnection(Context.ConnectionId);
 
-            if (user != null)
+            _onlineTracker.Remove(Context.ConnectionId); 
+
+            if (userId.HasValue)
             {
+                var user = await _unitOfWork.Users.GetByIdAsync(userId.Value);
+
                 user.IsOnline = false;
                 user.LastSeen = DateTime.UtcNow;
+
                 await _unitOfWork.Users.UpdateAsync(user);
                 await _unitOfWork.Commit(Context.ConnectionAborted);
 
             }
 
-            await Clients.Others.SendAsync("UserOffline", userId);
-            await base.OnConnectedAsync();
+            if (!_onlineTracker.IsOnline(userId.Value))
+            {
+                await Clients.Others.SendAsync("UserOffline", userId.Value);
+            }
+            await base.OnDisconnectedAsync(exception);
         }
 
         public async Task StartTyping(string conversationId)

@@ -1,4 +1,4 @@
-import axiosInstance from './axiosInstance'; // ili kako se već zove fajl
+import axiosInstance from './axiosInstance';
 
 export const getChats = async () => {
     try{
