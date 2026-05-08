@@ -10,11 +10,12 @@ export const getChats = async () => {
     }
 }
 
-export const createChat = async (memberId,chatName) => {
+export const createChat = async ({memberIds,chatName,isGroup}) => {
     try{
         const response = await axiosInstance.post("/conversation/create",{
-            conversationName: chatName,
-            memberId: memberId
+            name: chatName,
+            memberIds: memberIds,
+            isGroup: isGroup
         });
         return response.data;
     }catch(error)

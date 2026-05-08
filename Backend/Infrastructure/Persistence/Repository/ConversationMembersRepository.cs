@@ -19,9 +19,10 @@ namespace Infrastructure.Persistence.Repository
             var result = await dbContext.ConversationMembers
                 .Where(x => x.UserId.Equals(id))
                 .Include(c => c.Conversation)
+                    .ThenInclude(c => c.Members)
+                        .ThenInclude(m => m.User)
                 .Select(c => c.Conversation)
                 .ToListAsync();
-
             return result;
         }
 

@@ -1,0 +1,34 @@
+import Avatar from "../../common/Avatar";
+
+export default function ChatsList({ chats, activeChatId, onChatSelect }) {
+
+    return (
+        <>
+            <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-[#64748b]">Prethodne poruke</p>
+            <div className="flex flex-col gap-1">
+                {chats.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center gap-2 pt-12 text-center">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#94a3b8]">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                        </svg>
+                        <p className="text-xs text-[#94a3b8]">Nema prethodnih poruka</p>
+                    </div>
+                ) : (
+                    chats.map((c) => (
+                        <div
+                            key={c.conversationId}
+                            onClick={() => onChatSelect(c.conversationId)}
+                            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition cursor-pointer ${activeChatId === c.conversationId ? "bg-blue-600/10" : "hover:bg-black/5"}`}
+                        >
+                            <Avatar initials={c.conversationName?.slice(0, 2).toUpperCase()} size="sm" />
+                            <div>
+                                <p className="font-medium text-[#1e293b]">{c.conversationName}</p>
+                                <p className="text-xs text-[#64748b]">{c.lastMessage}</p>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+        </>
+    );
+}

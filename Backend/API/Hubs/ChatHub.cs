@@ -40,9 +40,6 @@ namespace API.Hubs
                 await _unitOfWork.Users.UpdateAsync(user);
                 await _unitOfWork.Commit(Context.ConnectionAborted);
 
-                // Šaljemo objekat sa userId i username, ne samo userId.
-                // Frontend će ovo primiti kao { userId, username } - SignalR sam serijalizuje
-                // u camelCase JSON po default-u.
                 await Clients.Others.SendAsync("UserOnline", new { userId, username = user.Username });
             }
 

@@ -22,10 +22,10 @@ namespace Application.Conversations.Commands
 
             var result = conversations.Select(x => new ConversationsDto
             {
-                ConversationsId = x.Id,
+                ConversationId = x.Id,
                 ConversationName = x.Name,
                 Members = x.Members.Select(member => new MemberDto { 
-                    UserId = member.Id,
+                    UserId = member.UserId,
                     Name = member.User.Username,
                     IsOnline = member.User.IsOnline,
                 })
