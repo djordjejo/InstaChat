@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Application.Conversations.Queries
+namespace Application.Conversations.Commands.CreateChat
 {
     public class CreateConversationQuery : IRequest<ConversationDto>
     {

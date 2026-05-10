@@ -28,8 +28,7 @@ export default function LogIn() {
                 email: user.email,
                 password: user.password,
             });
-            console.log("Attempting to log in with:", response.data.username +" " + response.data.token);
-            login(response.data.username, response.data.token);
+            login(response.data.token);
             navigate("/");
         } catch (err) {
             setError(

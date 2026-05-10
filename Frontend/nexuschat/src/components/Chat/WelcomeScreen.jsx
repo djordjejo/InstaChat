@@ -1,4 +1,7 @@
-export default function WelcomeScreen({ user }) {
+import {useAuth} from "../../context/AuthContext";
+
+export default function WelcomeScreen({  }) {
+    const { user } = useAuth();
     return (
         <main className="flex flex-1 flex-col items-center justify-center gap-4 bg-[#f0f7ff]">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-blue-200 bg-blue-100">
@@ -7,7 +10,7 @@ export default function WelcomeScreen({ user }) {
                 </svg>
             </div>
             <div className="text-center">
-                <p className="text-base font-semibold text-[#1e293b]">Dobrodošao, {user}</p>
+                <p className="text-base font-semibold text-[#1e293b]">Dobrodošao, {user?.username}</p>
                 <p className="mt-1 text-sm text-[#64748b]">Izaberi razgovor ili pokreni novi</p>
             </div>
         </main>

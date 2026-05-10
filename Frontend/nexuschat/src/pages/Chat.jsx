@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { act, use, useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { createChat ,getChats, viewChat } from "../api/chatsApi";
+import { createChat ,getChats, viewChat,deleteChat } from "../api/chatsApi";
 import { sendMessage } from "../api/messageApi";
 import { useSignalRConnection } from "../hooks/useSignalRConnection";
 import { useOnlineUsers } from "../hooks/useOnlineUsers";
@@ -16,6 +16,7 @@ import ChatHeader from "../components/Chat/ChatView/ChatHeader";
 import MessagesList from "../components/Chat/ChatView/MessagesList";
 import MessageInput from "../components/Chat/ChatView/MessageInput";
 
+
 export default function Chat() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
@@ -29,9 +30,9 @@ export default function Chat() {
 
     const connection = useSignalRConnection(setMessages);
     const { otherOnlineUsers } = useOnlineUsers(connection, user);
+    const [unreadMessages, setUnreadMessages] = useState(new Map()); 
+    const initials = user?.username?.slice(0, 2).toUpperCase();
 
-    const initials = user.slice(0, 2).toUpperCase();
-    // dohvata cetove korisnika pri učitavanju stranice i postavlja ih u stanje
     useEffect(() => {
         const fetchChats = async () => {
             const ch = await getChats();
@@ -39,12 +40,30 @@ export default function Chat() {
         };
         fetchChats();
     }, []);
-    // svaki put kad se promeni aktivni čet ili konekcija,
-    //  korisnik napušta prethodni čet (ako postoji) i pridružuje se novom, 
-    // a zatim učitava poruke za novi čet
+
+    const handleDeleteChat = async () => {
+    if (!activeChatId) return;
+    
+    try {
+        await deleteChat(activeChatId);  
+        const updatedChats = await getChats();
+        setChats(updatedChats ?? []);
+        setActiveChatId(null);
+        setChat(null);
+        setMessages([]);
+    } catch (err) {
+        console.error("Brisanje razgovora nije uspelo:", err);
+    }
+};
+
     useEffect(() => {
         if (!activeChatId || !connection) return;
 
+        setUnreadMessages(prev => {
+            const next = new Map(prev);
+            next.delete(activeChatId);
+            return next;
+        });
         connection.invoke("LeaveConversation", activeChatId);
 
         const fetchChat = async () => {
@@ -73,29 +92,54 @@ export default function Chat() {
         }
     };
 
+    // OVDE JE OSTALO DA SE NAPRAVI INKREMENT NEPROČITANIH PORUKA KADA STI U DRUGOM ČETU, I DEKREMENT KADA OTVORIŠ ČET SA NOVOM PORUKOM
+    useEffect(() => {
+    if (!connection) return;
+
+    const handleNewMessage = (message) => {
+        console.log("📨 SignalR poruka stigla:", message);
+        console.log("activeChatId:", activeChatId);
+        console.log("message.conversationId:", message.conversationId);
+
+        if (message.conversationId !== activeChatId) {
+            console.log("✅ Inkrementiram unread");
+            setUnreadMessages(prev => {
+                const next = new Map(prev);
+                next.set(message.conversationId, (next.get(message.conversationId) || 0) + 1);
+                return next;
+            });
+        }
+    };
+
+    connection.on("ReceiveMessage", handleNewMessage);
+    return () => connection.off("ReceiveMessage", handleNewMessage);
+}, [connection, activeChatId]);
+
+
+    const onlineUser = otherOnlineUsers.find(u => u.userId === chat?.members?.find(m => m.userId !== user)?.userId);
+
     const handleCreateChat = async (userId) => {
     if (!userId) return;
 
     const existingChat = chats.find(c => 
         c.members?.some(m => m.userId === userId)
     );
-    const user = otherOnlineUsers.find(u => u.userId === userId);
-    console.log(user);
     if (existingChat) {
-        // Čet postoji - samo ga otvori
-        setActiveChatId(existingChat.conversationsId);
+        setActiveChatId(existingChat.conversationId);
         setSidebarView("chats");
         return;
     }
 
     try {
         const newChat = await createChat({
-        name: user?.username || "Novi cet",
+        name: onlineUser?.username || "Novi cet",
         isGroup: false,
         memberIds: [userId]
+        
 });
-        setChats([...chats, newChat]);
-        setActiveChatId(newChat.conversationsId);
+         const updatedChats = await getChats();
+        setChats(updatedChats ?? []);
+        setActiveChatId(newChat.conversationId);
         setSidebarView("chats");
     } catch (err) {
         console.error("Kreiranje chata nije uspelo:", err);
@@ -113,7 +157,7 @@ export default function Chat() {
                 <div className="flex items-center gap-3 border-b border-black/[0.06] px-5 py-4">
                     <Avatar initials={initials} size="sm" />
                     <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-[#1e293b]">{user}</p>
+                        <p className="truncate text-sm font-semibold text-[#1e293b]">{user?.username}</p>
                         <p className="text-xs text-green-500">Online</p>
                     </div>
                 </div>
@@ -127,6 +171,7 @@ export default function Chat() {
                 <div className="flex-1 overflow-y-auto px-4 pt-5">
                     {sidebarView === "chats" && (
                         <ChatsList
+                            unreadMessages={unreadMessages}
                             chats={chats}
                             activeChatId={activeChatId}
                             onChatSelect={setActiveChatId}
@@ -138,7 +183,6 @@ export default function Chat() {
                     )}
                     {sidebarView === "profile" && (
                         <ProfilePanel
-                            user={user}
                             initials={initials}
                             onLogout={handleLogout}
                         />
@@ -169,11 +213,11 @@ export default function Chat() {
 
             {/* MAIN */}
             {chat == null ? (
-                <WelcomeScreen user={user} />
+                <WelcomeScreen />
             ) : (
                 <main className="flex flex-1 flex-col bg-[#f0f7ff]">
-                    <ChatHeader user={user} />
-                    <MessagesList messages={messages} user={user} />
+                    <ChatHeader chat={chat} onDeleteChat={handleDeleteChat} />
+                    <MessagesList messages={messages}  />
                     <MessageInput
                         value={messageTxt}
                         onChange={setMessageTxt}

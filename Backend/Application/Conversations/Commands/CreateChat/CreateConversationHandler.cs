@@ -1,5 +1,4 @@
-﻿using Application.Conversations.Queries;
-using Application.DTO;
+﻿using Application.DTO;
 using Application.DTO.Conversation;
 using Application.DTO.Member;
 using Application.DTO.Messages;
@@ -8,7 +7,7 @@ using Domain.EnumMember;
 using Domain.Interfaces;
 using MediatR;
 
-namespace Application.Conversations.Commands;
+namespace Application.Conversations.Commands.CreateChat;
 
 public class CreateConversationHandler : IRequestHandler<CreateConversationQuery, ConversationDto>
 {
@@ -64,23 +63,9 @@ public class CreateConversationHandler : IRequestHandler<CreateConversationQuery
 
         await _unitOfWork.Commit(cancellationToken);
 
-        // Učitaj kompletan razgovor sa članovima
         var fullConversation = await _unitOfWork.ConversationMembers
             .GetConversationAsync(conversation.Id);
 
-        // Za 1-na-1 razgovor, postavi ime na username drugog korisnika
-        if (!fullConversation.IsGroup && string.IsNullOrEmpty(fullConversation.Name))
-        {
-            var otherMember = fullConversation.Members
-                .FirstOrDefault(m => m.UserId != command.CreatedById);
-
-            if (otherMember != null)
-            {
-                fullConversation.Name = otherMember.User.Username;
-                await _unitOfWork.Conversations.UpdateAsync(fullConversation);
-                await _unitOfWork.Commit(cancellationToken);
-            }
-        }
 
         return new ConversationDto
         {

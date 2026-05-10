@@ -12,6 +12,7 @@ namespace Application.DTO.Conversation
         public Guid ConversationId { get; set; }
         public string ConversationName { get; set; }
         public IEnumerable<MemberDto>? Members { get; set; }
+        public bool UnreadMessage { get; set; }
         public string AvatarUrl { get; set; }
     }
 }

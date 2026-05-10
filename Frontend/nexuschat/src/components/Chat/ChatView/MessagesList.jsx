@@ -1,9 +1,10 @@
 import { useEffect, useRef } from "react";
 import MessageBubble from "./MessageBubble";
+import { useAuth } from "../../../context/AuthContext";
 
-export default function MessagesList({ messages, user }) {
+export default function MessagesList({ messages }) {
+    const { user } = useAuth();
     const messagesEndRef = useRef(null);
-
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
@@ -15,7 +16,7 @@ export default function MessagesList({ messages, user }) {
                 <MessageBubble
                     key={message.messageId}
                     message={message}
-                    isMyMessage={message.senderUsername === user}
+                    isMyMessage={message.senderUsername === user.username}
                 />
             ))}
             <div ref={messagesEndRef} />

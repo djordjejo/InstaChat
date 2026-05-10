@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Application.Conversations.Queries
+namespace Application.Conversations.Queries.GetChats
 {
     public class GetConversationsQuery : IRequest<List<ConversationsDto>>
     {

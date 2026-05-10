@@ -1,7 +1,6 @@
 import Avatar from "../../common/Avatar";
 
 export default function ActiveUsersList({ users, onCreateChat }) {
-
     return (
         <>
             <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-[#64748b]">

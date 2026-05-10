@@ -24,7 +24,6 @@ namespace Infrastructure.Persistence.Repository
             var result = await _dbSet.AddAsync(entity);
             if (result != null)
             {
-                await _context.SaveChangesAsync();
                 return result.Entity;
             }
             return null;
@@ -38,8 +37,7 @@ namespace Infrastructure.Persistence.Repository
 
         public async Task DeleteAsync(T entity)
         {
-           _dbSet.Remove(entity);
-            await _context.SaveChangesAsync();
+            _dbSet.Remove(entity);
         }
 
         public async Task<List<T>> GetAllAsync()

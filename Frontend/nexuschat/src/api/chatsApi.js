@@ -24,8 +24,10 @@ export const createChat = async ({memberIds,chatName,isGroup}) => {
     }
 }
 export const deleteChat = async (chatId) => {
+
     try{
-        await axiosInstance.delete(`/conversation/${chatId}`);
+        const response =  await axiosInstance.delete(`/conversation/${chatId}`);
+        return response.data;
     }catch(error)
     {
         throw new Error("Failed to delete a chat: " + error.message);

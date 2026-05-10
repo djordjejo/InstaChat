@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-export function useOnlineUsers(connection, currentUsername) {
+export function useOnlineUsers(connection, currentUser) {
     const [onlineUsers, setOnlineUsers] = useState(new Map());
 
     useEffect(() => {
@@ -15,7 +15,7 @@ export function useOnlineUsers(connection, currentUsername) {
         });
 
         connection.on("UserOffline", (userId) => {
-            setOnlineUsers(prev => {
+            setOnlineUsers(prev => { 
                 const next = new Map(prev);
                 next.delete(userId);
                 return next;
@@ -31,8 +31,8 @@ export function useOnlineUsers(connection, currentUsername) {
             .catch(err => console.error("Greška pri uzimanju online korisnika:", err));
     }, [connection]);
 
-    const otherOnlineUsers = Array.from(onlineUsers.values())
-        .filter(u => u.username !== currentUsername);
 
+    const otherOnlineUsers = Array.from(onlineUsers.values())
+    .filter(u => u.username !== currentUser?.username);
     return { onlineUsers, otherOnlineUsers };
 }

@@ -1,11 +1,13 @@
 import Avatar from "../../common/Avatar";
+import { useAuth } from "../../../context/AuthContext";
+export default function ProfilePanel({ initials, onLogout }) {
 
-export default function ProfilePanel({ user, initials, onLogout }) {
+    const { user } = useAuth();
     return (
         <div className="flex flex-col items-center gap-4 py-4">
             <Avatar initials={initials} size="lg" />
             <div className="text-center">
-                <p className="text-base font-semibold text-[#1e293b]">{user}</p>
+                <p className="text-base font-semibold text-[#1e293b]">{user?.username}</p>
             </div>
             <div className="w-full rounded-xl border border-black/[0.06] bg-white/60 p-4">
                 <div className="flex flex-col gap-3 text-sm">
