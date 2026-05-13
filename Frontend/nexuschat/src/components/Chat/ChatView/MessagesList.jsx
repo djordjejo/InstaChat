@@ -5,6 +5,7 @@ import { useAuth } from "../../../context/AuthContext";
 export default function MessagesList({ messages }) {
     const { user } = useAuth();
     const messagesEndRef = useRef(null);
+
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);

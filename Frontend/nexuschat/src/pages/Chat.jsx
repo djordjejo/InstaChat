@@ -8,6 +8,7 @@ import { useOnlineUsers } from "../hooks/useOnlineUsers";
 
 import Avatar from "../components/common/Avatar";
 import SidebarMenu from "../components/Chat/Sidebar/SidebarMenu";
+import CreateGroupModal from "../components/Chat/Sidebar/CreateGroupModal";
 import ChatsList from "../components/Chat/Sidebar/ChatsList";
 import ActiveUsersList from "../components/Chat/Sidebar/ActiveUsersList";
 import ProfilePanel from "../components/Chat/Sidebar/ProfilePanel";
@@ -20,17 +21,23 @@ import MessageInput from "../components/Chat/ChatView/MessageInput";
 export default function Chat() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
+    const EMPTY_GUID = "00000000-0000-0000-0000-000000000000";
 
     const [chats, setChats] = useState([]);
     const [chat, setChat] = useState(null);
+
     const [activeChatId, setActiveChatId] = useState(null);
     const [sidebarView, setSidebarView] = useState("chats");
+    const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+
+
     const [messages, setMessages] = useState([]);
     const [messageTxt, setMessageTxt] = useState("");
-
-    const connection = useSignalRConnection(setMessages);
-    const { otherOnlineUsers } = useOnlineUsers(connection, user);
     const [unreadMessages, setUnreadMessages] = useState(new Map()); 
+
+
+    const connection = useSignalRConnection();
+    const { otherOnlineUsers } = useOnlineUsers(connection, user);
     const initials = user?.username?.slice(0, 2).toUpperCase();
 
     useEffect(() => {
@@ -64,7 +71,6 @@ export default function Chat() {
             next.delete(activeChatId);
             return next;
         });
-        connection.invoke("LeaveConversation", activeChatId);
 
         const fetchChat = async () => {
             const conversation = await viewChat(activeChatId);
@@ -73,7 +79,6 @@ export default function Chat() {
         };
         fetchChat();
 
-        connection.invoke("JoinConversation", activeChatId);
     }, [activeChatId, connection]);
 
     const handleLogout = () => {
@@ -85,64 +90,82 @@ export default function Chat() {
         if (!message.trim()) return;
         setMessageTxt("");
         try {
-            await sendMessage(activeChatId, message);
+           const response =  await sendMessage(activeChatId, message);
         } catch (err) {
             console.error("Slanje nije uspelo:", err);
             setMessageTxt(message);
         }
     };
 
-    // OVDE JE OSTALO DA SE NAPRAVI INKREMENT NEPROČITANIH PORUKA KADA STI U DRUGOM ČETU, I DEKREMENT KADA OTVORIŠ ČET SA NOVOM PORUKOM
     useEffect(() => {
-    if (!connection) return;
+        if (!connection) return;
 
-    const handleNewMessage = (message) => {
-        console.log("📨 SignalR poruka stigla:", message);
-        console.log("activeChatId:", activeChatId);
-        console.log("message.conversationId:", message.conversationId);
+        const handleNewMessage = (message) => {
+             console.log("[SignalR] Stigla poruka:", message);
+    console.log("[SignalR] activeChatId:", activeChatId);
+    console.log("[SignalR] match?", message.conversationId === activeChatId);
+            if (message.conversationId === activeChatId) {
+                setMessages(prev => [...prev, message]);
+            } else {
+                setUnreadMessages(prev => {
+                    const next = new Map(prev);
+                    next.set(message.conversationId, (next.get(message.conversationId) || 0) + 1);
+                    return next;
+                });
+            }
+        };
 
-        if (message.conversationId !== activeChatId) {
-            console.log("✅ Inkrementiram unread");
-            setUnreadMessages(prev => {
-                const next = new Map(prev);
-                next.set(message.conversationId, (next.get(message.conversationId) || 0) + 1);
-                return next;
-            });
+        connection.on("ReceiveMessage", handleNewMessage);
+        return () => connection.off("ReceiveMessage", handleNewMessage);
+    }, [connection, activeChatId]);
+
+
+        const onlineUser = otherOnlineUsers.find(u => u.userId === chat?.members?.find(m => m.userId !== user.userId)?.userId);
+
+        const handleCreateChat = async (userId) => {
+        if (!userId) return;
+
+        const existingChat = chats.find(c => 
+            c.members?.some(m => m.userId === userId)
+        );
+        if (existingChat) {
+            setActiveChatId(existingChat.conversationId);
+            await connection.invoke("JoinConversation", existingChat.conversationId);
+
+            setSidebarView("chats");
+            return;
+        }
+
+        try {
+            const newChat = await createChat({
+            name: onlineUser?.username || "Novi cet",
+            isGroup: false,
+            memberIds: [userId]
+            
+    });
+            const updatedChats = await getChats();
+            setChats(updatedChats ?? []);
+            setActiveChatId(newChat.conversationId);
+            setSidebarView("chats");
+        } catch (err) {
+            console.error("Kreiranje chata nije uspelo:", err);
         }
     };
-
-    connection.on("ReceiveMessage", handleNewMessage);
-    return () => connection.off("ReceiveMessage", handleNewMessage);
-}, [connection, activeChatId]);
-
-
-    const onlineUser = otherOnlineUsers.find(u => u.userId === chat?.members?.find(m => m.userId !== user)?.userId);
-
-    const handleCreateChat = async (userId) => {
-    if (!userId) return;
-
-    const existingChat = chats.find(c => 
-        c.members?.some(m => m.userId === userId)
-    );
-    if (existingChat) {
-        setActiveChatId(existingChat.conversationId);
-        setSidebarView("chats");
-        return;
-    }
-
+  const handleCreateGroup = async ({ name, memberIds }) => {
     try {
         const newChat = await createChat({
-        name: onlineUser?.username || "Novi cet",
-        isGroup: false,
-        memberIds: [userId]
-        
-});
-         const updatedChats = await getChats();
+            name,            
+            isGroup: true,   
+            memberIds        
+        });
+        const updatedChats = await getChats();
         setChats(updatedChats ?? []);
         setActiveChatId(newChat.conversationId);
-        setSidebarView("chats");
+        await connection.invoke("JoinConversation", newChat.conversationId);
+
+        setShowCreateGroupModal(false);
     } catch (err) {
-        console.error("Kreiranje chata nije uspelo:", err);
+        console.error("Kreiranje grupe nije uspelo:", err);
     }
 };
     return (
@@ -150,16 +173,24 @@ export default function Chat() {
             style={{ background: "linear-gradient(135deg, #e0f2fe 0%, #ede9fe 50%, #fce7f3 100%)" }}
             className="flex h-screen w-full overflow-hidden text-[#1e293b]"
         >
-            {/* SIDEBAR */}
             <aside className="flex w-64 shrink-0 flex-col border-r border-black/[0.06] bg-[#e0effe]">
 
-                {/* Profil korisnika */}
-                <div className="flex items-center gap-3 border-b border-black/[0.06] px-5 py-4">
+               <div className="flex items-center gap-3 border-b border-black/[0.06] px-5 py-4">
                     <Avatar initials={initials} size="sm" />
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold text-[#1e293b]">{user?.username}</p>
                         <p className="text-xs text-green-500">Online</p>
                     </div>
+                    <button
+                        onClick={() => setShowCreateGroupModal(true)}
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-[#64748b] transition hover:bg-blue-600/10 hover:text-blue-600"
+                        title="Kreiraj grupu"
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                    </button>
                 </div>
 
                 <SidebarMenu
@@ -217,7 +248,7 @@ export default function Chat() {
             ) : (
                 <main className="flex flex-1 flex-col bg-[#f0f7ff]">
                     <ChatHeader chat={chat} onDeleteChat={handleDeleteChat} />
-                    <MessagesList messages={messages}  />
+                        <MessagesList messages={messages}  />
                     <MessageInput
                         value={messageTxt}
                         onChange={setMessageTxt}
@@ -225,6 +256,14 @@ export default function Chat() {
                     />
                 </main>
             )}
+             {showCreateGroupModal && (
+            <CreateGroupModal
+                onlineUsers={otherOnlineUsers}
+                onClose={() => setShowCreateGroupModal(false)}
+                onCreate={handleCreateGroup}
+            />
+             )}
         </div>
+        
     );
 }

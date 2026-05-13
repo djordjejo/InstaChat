@@ -32,7 +32,6 @@ namespace API.Hubs
             var user = await _unitOfWork.Users.GetByIdAsync(userId);
             if (user != null)
             {
-                // Sad u tracker dodajemo i username, ne samo ID.
                 _onlineTracker.Add(userId, user.Username, Context.ConnectionId);
 
                 user.IsOnline = true;
@@ -41,6 +40,13 @@ namespace API.Hubs
                 await _unitOfWork.Commit(Context.ConnectionAborted);
 
                 await Clients.Others.SendAsync("UserOnline", new { userId, username = user.Username });
+
+                var conversationIds = await _unitOfWork.Conversations.GetConversationIdsForUserAsync(userId);
+
+                foreach (var convId in conversationIds)
+                { 
+                    await Groups.AddToGroupAsync(Context.ConnectionId, convId.ToString());
+                }
             }
 
             await base.OnConnectedAsync();
@@ -56,6 +62,10 @@ namespace API.Hubs
 
             if (userId.HasValue)
             {
+                if (!_onlineTracker.IsOnline(userId.Value))
+                {
+                    await Clients.Others.SendAsync("UserOffline", userId.Value);
+                }
                 var user = await _unitOfWork.Users.GetByIdAsync(userId.Value);
 
                 user.IsOnline = false;
@@ -66,10 +76,6 @@ namespace API.Hubs
 
             }
 
-            if (!_onlineTracker.IsOnline(userId.Value))
-            {
-                await Clients.Others.SendAsync("UserOffline", userId.Value);
-            }
             await base.OnDisconnectedAsync(exception);
         }
 

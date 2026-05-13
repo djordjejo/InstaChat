@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { createConnection } from "../services/signalRService";
 import { HubConnectionState } from "@microsoft/signalr";
 
-export function useSignalRConnection(setMessages) {
+export function useSignalRConnection() {
     const [connection, setConnection] = useState(null);
     const connRef = useRef(null);
 
@@ -11,13 +11,8 @@ export function useSignalRConnection(setMessages) {
         const conn = createConnection(token);
         connRef.current = conn;
 
-        conn.on("ReceiveMessage", (message) => {
-            setMessages(prev => [...prev, message]);
-        });
-
         conn.start()
             .then(() => {
-                // Provera da li je još uvek aktivna ova instanca
                 if (connRef.current === conn) {
                     setConnection(conn);
                 }
@@ -39,7 +34,6 @@ export function useSignalRConnection(setMessages) {
             if (conn.state === HubConnectionState.Connected) {
                 conn.stop();
             }
-            // Ako još nije konektovan, samo ga "abort-uj"
         };
     }, []);
 

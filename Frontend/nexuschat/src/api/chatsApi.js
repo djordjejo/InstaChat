@@ -9,17 +9,15 @@ export const getChats = async () => {
         throw new Error("Failed to fetch chats: " + error.message);
     }
 }
-
-export const createChat = async ({memberIds,chatName,isGroup}) => {
-    try{
-        const response = await axiosInstance.post("/conversation/create",{
-            name: chatName,
-            memberIds: memberIds,
-            isGroup: isGroup
+export const createChat = async ({ name, memberIds, isGroup }) => {
+    try {
+        const response = await axiosInstance.post("/conversation/create", {
+            name,
+            memberIds,
+            isGroup
         });
         return response.data;
-    }catch(error)
-    {
+    } catch (error) {
         throw new Error("Failed to create a chat: " + error.message);
     }
 }

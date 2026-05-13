@@ -43,6 +43,7 @@ namespace Application.Messages.Handler
             var messageDto = new MessageDto
             {
                 MessageId = message.Id,
+                ConversationId = message.ConversationId,
                 Content = message.Content,
                 SentAt = message.SentAt,
                 SenderUsername = sender?.Username ?? "Unknown",
