@@ -1,10 +1,11 @@
-import { act, use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { createChat ,getChats, viewChat,deleteChat } from "../api/chatsApi";
+import { createChat, getChats, viewChat, deleteChat } from "../api/chatsApi";
 import { sendMessage } from "../api/messageApi";
 import { useSignalRConnection } from "../hooks/useSignalRConnection";
 import { useOnlineUsers } from "../hooks/useOnlineUsers";
+import TypingIndicator from "../components/Chat/ChatView/TypingIndicator";
 
 import Avatar from "../components/common/Avatar";
 import SidebarMenu from "../components/Chat/Sidebar/SidebarMenu";
@@ -21,25 +22,22 @@ import MessageInput from "../components/Chat/ChatView/MessageInput";
 export default function Chat() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
-    const EMPTY_GUID = "00000000-0000-0000-0000-000000000000";
 
     const [chats, setChats] = useState([]);
     const [chat, setChat] = useState(null);
-
     const [activeChatId, setActiveChatId] = useState(null);
     const [sidebarView, setSidebarView] = useState("chats");
     const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
-
-
+    const [typingUsers, setTypingUsers] = useState(new Map());
     const [messages, setMessages] = useState([]);
     const [messageTxt, setMessageTxt] = useState("");
-    const [unreadMessages, setUnreadMessages] = useState(new Map()); 
-
+    const [unreadMessages, setUnreadMessages] = useState(new Map());
 
     const connection = useSignalRConnection();
     const { otherOnlineUsers } = useOnlineUsers(connection, user);
     const initials = user?.username?.slice(0, 2).toUpperCase();
 
+    // Inicijalno učitavanje chatova
     useEffect(() => {
         const fetchChats = async () => {
             const ch = await getChats();
@@ -48,21 +46,7 @@ export default function Chat() {
         fetchChats();
     }, []);
 
-    const handleDeleteChat = async () => {
-    if (!activeChatId) return;
-    
-    try {
-        await deleteChat(activeChatId);  
-        const updatedChats = await getChats();
-        setChats(updatedChats ?? []);
-        setActiveChatId(null);
-        setChat(null);
-        setMessages([]);
-    } catch (err) {
-        console.error("Brisanje razgovora nije uspelo:", err);
-    }
-};
-
+    // Učitavanje konkretnog chata kad se klikne
     useEffect(() => {
         if (!activeChatId || !connection) return;
 
@@ -78,32 +62,13 @@ export default function Chat() {
             setMessages(conversation?.messages ?? []);
         };
         fetchChat();
-
     }, [activeChatId, connection]);
 
-    const handleLogout = () => {
-        logout();
-        navigate("/login");
-    };
-
-    const handleSendMessage = async (message) => {
-        if (!message.trim()) return;
-        setMessageTxt("");
-        try {
-           const response =  await sendMessage(activeChatId, message);
-        } catch (err) {
-            console.error("Slanje nije uspelo:", err);
-            setMessageTxt(message);
-        }
-    };
-
+    // Listener za dolazne poruke
     useEffect(() => {
         if (!connection) return;
 
         const handleNewMessage = (message) => {
-             console.log("[SignalR] Stigla poruka:", message);
-    console.log("[SignalR] activeChatId:", activeChatId);
-    console.log("[SignalR] match?", message.conversationId === activeChatId);
             if (message.conversationId === activeChatId) {
                 setMessages(prev => [...prev, message]);
             } else {
@@ -119,30 +84,72 @@ export default function Chat() {
         return () => connection.off("ReceiveMessage", handleNewMessage);
     }, [connection, activeChatId]);
 
+    // Listener za nove konverzacije (sidebar update za drugog korisnika)
+    useEffect(() => {
+        if (!connection) return;
 
-        const onlineUser = otherOnlineUsers.find(u => u.userId === chat?.members?.find(m => m.userId !== user.userId)?.userId);
+        const handleConversationCreated = async () => {
+            const updatedChats = await getChats();
+            setChats(updatedChats ?? []);
+        };
 
-        const handleCreateChat = async (userId) => {
+        connection.on("ConversationCreated", handleConversationCreated);
+        return () => connection.off("ConversationCreated", handleConversationCreated);
+    }, [connection]);
+
+    const handleLogout = () => {
+        logout();
+        navigate("/login");
+    };
+
+    const handleSendMessage = async (message) => {
+        if (!message.trim()) return;
+        setMessageTxt("");
+        try {
+            await sendMessage(activeChatId, message);
+        } catch (err) {
+            console.error("Slanje nije uspelo:", err);
+            setMessageTxt(message);
+        }
+    };
+
+    const handleDeleteChat = async () => {
+        if (!activeChatId) return;
+
+        try {
+            await deleteChat(activeChatId);
+            const updatedChats = await getChats();
+            setChats(updatedChats ?? []);
+            setActiveChatId(null);
+            setChat(null);
+            setMessages([]);
+        } catch (err) {
+            console.error("Brisanje razgovora nije uspelo:", err);
+        }
+    };
+
+    const onlineUser = otherOnlineUsers.find(
+        u => u.userId === chat?.members?.find(m => m.userId !== user.userId)?.userId
+    );
+
+    const handleCreateChat = async (userId) => {
         if (!userId) return;
 
-        const existingChat = chats.find(c => 
+        const existingChat = chats.find(c =>
             c.members?.some(m => m.userId === userId)
         );
         if (existingChat) {
             setActiveChatId(existingChat.conversationId);
-            await connection.invoke("JoinConversation", existingChat.conversationId);
-
             setSidebarView("chats");
             return;
         }
 
         try {
             const newChat = await createChat({
-            name: onlineUser?.username || "Novi cet",
-            isGroup: false,
-            memberIds: [userId]
-            
-    });
+                name: onlineUser?.username || "Novi cet",
+                isGroup: false,
+                memberIds: [userId]
+            });
             const updatedChats = await getChats();
             setChats(updatedChats ?? []);
             setActiveChatId(newChat.conversationId);
@@ -151,31 +158,64 @@ export default function Chat() {
             console.error("Kreiranje chata nije uspelo:", err);
         }
     };
-  const handleCreateGroup = async ({ name, memberIds }) => {
-    try {
-        const newChat = await createChat({
-            name,            
-            isGroup: true,   
-            memberIds        
-        });
-        const updatedChats = await getChats();
-        setChats(updatedChats ?? []);
-        setActiveChatId(newChat.conversationId);
-        await connection.invoke("JoinConversation", newChat.conversationId);
 
-        setShowCreateGroupModal(false);
-    } catch (err) {
-        console.error("Kreiranje grupe nije uspelo:", err);
-    }
-};
+    const handleCreateGroup = async ({ name, memberIds }) => {
+        try {
+            const newChat = await createChat({
+                name,
+                isGroup: true,
+                memberIds
+            });
+            const updatedChats = await getChats();
+            setChats(updatedChats ?? []);
+            setActiveChatId(newChat.conversationId);
+            setShowCreateGroupModal(false);
+        } catch (err) {
+            console.error("Kreiranje grupe nije uspelo:", err);
+        }
+    };
+    useEffect(() => {
+        if (!connection) return;
+
+        const handleUserTyping = ({ userId, userName, conversationId }) => {
+            setTypingUsers(prev => {
+                const next = new Map(prev);
+                const usersInChat = new Map(next.get(conversationId) ?? new Map());
+                usersInChat.set(userId, userName);
+                next.set(conversationId, usersInChat);
+                return next;
+            });
+        };
+
+        const handleUserStopTyping = ({ userId, conversationId }) => {
+            setTypingUsers(prev => {
+                const next = new Map(prev);
+                const usersInChat = new Map(next.get(conversationId) ?? new Map());
+                usersInChat.delete(userId);
+                if (usersInChat.size === 0) {
+                    next.delete(conversationId);
+                } else {
+                    next.set(conversationId, usersInChat);
+                }
+                return next;
+            });
+        };
+
+        connection.on("UserTyping", handleUserTyping);
+        connection.on("UserStopTyping", handleUserStopTyping);
+
+        return () => {
+            connection.off("UserTyping", handleUserTyping);
+            connection.off("UserStopTyping", handleUserStopTyping);
+        };
+    }, [connection]);
     return (
         <div
             style={{ background: "linear-gradient(135deg, #e0f2fe 0%, #ede9fe 50%, #fce7f3 100%)" }}
             className="flex h-screen w-full overflow-hidden text-[#1e293b]"
         >
             <aside className="flex w-64 shrink-0 flex-col border-r border-black/[0.06] bg-[#e0effe]">
-
-               <div className="flex items-center gap-3 border-b border-black/[0.06] px-5 py-4">
+                <div className="flex items-center gap-3 border-b border-black/[0.06] px-5 py-4">
                     <Avatar initials={initials} size="sm" />
                     <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold text-[#1e293b]">{user?.username}</p>
@@ -209,18 +249,16 @@ export default function Chat() {
                         />
                     )}
                     {sidebarView === "activeUsers" && (
-                        <ActiveUsersList users={otherOnlineUsers} 
-                        onCreateChat={handleCreateChat}/>
+                        <ActiveUsersList
+                            users={otherOnlineUsers}
+                            onCreateChat={handleCreateChat}
+                        />
                     )}
                     {sidebarView === "profile" && (
-                        <ProfilePanel
-                            initials={initials}
-                            onLogout={handleLogout}
-                        />
+                        <ProfilePanel initials={initials} onLogout={handleLogout} />
                     )}
                 </div>
 
-                {/* Dno sidebar-a */}
                 <div className="flex flex-col gap-0.5 border-t border-black/[0.06] px-4 py-3">
                     <button
                         onClick={() => setSidebarView(sidebarView === "profile" ? "chats" : "profile")}
@@ -242,28 +280,34 @@ export default function Chat() {
                 </div>
             </aside>
 
-            {/* MAIN */}
             {chat == null ? (
                 <WelcomeScreen />
             ) : (
                 <main className="flex flex-1 flex-col bg-[#f0f7ff]">
                     <ChatHeader chat={chat} onDeleteChat={handleDeleteChat} />
-                        <MessagesList messages={messages}  />
+                    <MessagesList messages={messages} />
+
+                    <TypingIndicator
+                        usernames={[...(typingUsers.get(activeChatId)?.values() ?? [])]}
+                    />
+
                     <MessageInput
                         value={messageTxt}
                         onChange={setMessageTxt}
                         onSend={handleSendMessage}
+                        connection={connection}
+                        activeChatId={activeChatId}
                     />
                 </main>
             )}
-             {showCreateGroupModal && (
-            <CreateGroupModal
-                onlineUsers={otherOnlineUsers}
-                onClose={() => setShowCreateGroupModal(false)}
-                onCreate={handleCreateGroup}
-            />
-             )}
+
+            {showCreateGroupModal && (
+                <CreateGroupModal
+                    onlineUsers={otherOnlineUsers}
+                    onClose={() => setShowCreateGroupModal(false)}
+                    onCreate={handleCreateGroup}
+                />
+            )}
         </div>
-        
     );
 }

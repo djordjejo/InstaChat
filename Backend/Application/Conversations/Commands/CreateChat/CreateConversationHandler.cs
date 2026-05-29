@@ -2,6 +2,7 @@
 using Application.DTO.Conversation;
 using Application.DTO.Member;
 using Application.DTO.Messages;
+using Application.Interfaces;
 using Domain.Entities;
 using Domain.EnumMember;
 using Domain.Interfaces;
@@ -12,10 +13,13 @@ namespace Application.Conversations.Commands.CreateChat;
 public class CreateConversationHandler : IRequestHandler<CreateConversationQuery, ConversationDto>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IChatNotificationService _chatNotificationService;  
 
-    public CreateConversationHandler(IUnitOfWork unitOfWork)
+
+    public CreateConversationHandler(IUnitOfWork unitOfWork, IChatNotificationService chatNotificationService)
     {
         _unitOfWork = unitOfWork;
+        _chatNotificationService = chatNotificationService;
     }
 
     public async Task<ConversationDto> Handle(
@@ -35,8 +39,14 @@ public class CreateConversationHandler : IRequestHandler<CreateConversationQuery
 
         await _unitOfWork.Conversations.AddAsync(conversation);
         await _unitOfWork.Commit(cancellationToken);
+        var allMemberIds = command.MemberIds
+          .Concat(new[] { command.CreatedById })
+          .Distinct();
 
-        // Dodaj kreatora kao Admin člana
+        await _chatNotificationService.AddUsersToConversationGroupAsync(
+          conversation.Id,
+          allMemberIds);
+
         var creatorMember = new ConversationMember
         {
             UserId = command.CreatedById,
@@ -46,7 +56,6 @@ public class CreateConversationHandler : IRequestHandler<CreateConversationQuery
         };
         await _unitOfWork.ConversationMembers.AddAsync(creatorMember);
 
-        // Dodaj ostale članove
         foreach (var memberId in command.MemberIds)
         {
             if (memberId == command.CreatedById) continue;
@@ -67,7 +76,7 @@ public class CreateConversationHandler : IRequestHandler<CreateConversationQuery
             .GetConversationAsync(conversation.Id);
 
 
-        return new ConversationDto
+        var conversationDto = new ConversationDto
         {
             ConversationId = fullConversation.Id,
             ConversationName = fullConversation.Name,
@@ -81,5 +90,11 @@ public class CreateConversationHandler : IRequestHandler<CreateConversationQuery
             }).ToList(),
             Messages = new List<MessageDto>()
         };
+
+        await _chatNotificationService.NotifyConversationCreatedAsync(
+          allMemberIds,
+          conversationDto);
+
+        return conversationDto;
     }
 }

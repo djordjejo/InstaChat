@@ -19,9 +19,9 @@ namespace Infrastructure.Persistence.Repository
         public async Task<List<Guid>> GetConversationIdsForUserAsync(Guid userId)
         {
             return await _context.ConversationMembers
-        .Where(cm => cm.UserId == userId)
-        .Select(cm => cm.ConversationId)
-        .ToListAsync();
+            .Where(cm => cm.UserId == userId)
+            .Select(cm => cm.ConversationId)
+            .ToListAsync();
 
         }
     }

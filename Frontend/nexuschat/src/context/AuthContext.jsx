@@ -4,13 +4,24 @@ import { jwtDecode } from "jwt-decode";
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(() => {
-        try {
-            return JSON.parse(localStorage.getItem("user")) || null;
-        } catch {
+   const [user, setUser] = useState(() => {
+    try {
+        const userStr = localStorage.getItem("user");
+        const tokenStr = localStorage.getItem("token");
+        if (!userStr || !tokenStr) return null;
+        
+        const decoded = jwtDecode(tokenStr);
+        const isExpired = decoded.exp * 1000 < Date.now();
+        if (isExpired) {
+            localStorage.removeItem("user");
+            localStorage.removeItem("token");
             return null;
         }
-    });
+        return JSON.parse(userStr);
+    } catch {
+        return null;
+    }
+});
 
     const [token, setToken] = useState(
         localStorage.getItem("token") || null

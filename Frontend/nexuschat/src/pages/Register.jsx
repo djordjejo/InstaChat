@@ -36,17 +36,19 @@ export default function Register() {
                 email: user.email,
                 password: user.password,
             });
+            navigate("/login");
 
-            login(res.data.user, res.data.token);
-            navigate("/");
         } catch (err) {
-            setError(
-                err.response?.data?.message ||
-                err.response?.data ||
-                "Registration failed. Please try again."
-            );
-        } finally {
-            setLoading(false);
+            const data = err.response?.data;
+            let message;
+
+            if (typeof data === "object" && data !== null) {
+                message = data.message || data.title;        // tvoj format ili .NET ProblemDetails
+            } else if (typeof data === "string") {
+                message = data;
+            }
+
+            setError(message || "Registration failed. Please try again.");
         }
     };
 

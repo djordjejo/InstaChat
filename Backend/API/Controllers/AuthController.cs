@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Application.Users.Commands.Queries.LogIn;
+using Microsoft.AspNetCore.Authorization;
 
 namespace API.Controllers
 {
@@ -21,15 +22,22 @@ namespace API.Controllers
             {
                 _mediator = mediator;
             }
-
-            [HttpPost("register")]
-            public async Task<IActionResult> Register(RegisterCommand command)
+        [AllowAnonymous]
+        [HttpPost("register")]
+        public async Task<IActionResult> Register(RegisterCommand command)
+        {
+            try
             {
                 var result = await _mediator.Send(command);
-                return Created("", result); 
+                return Ok(result);
             }
-
-            [HttpPost("login")]
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+        [AllowAnonymous]
+        [HttpPost("login")]
             public async Task<IActionResult> Login(LoginQuery query)
             {
                 var result = await _mediator.Send(query);

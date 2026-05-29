@@ -1,15 +1,11 @@
 ﻿using Domain.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Security.Claims;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace API.Hubs
 {
+    [Authorize]
     public class ChatHub : Hub
     {
         private readonly IUnitOfWork _unitOfWork;
@@ -30,6 +26,8 @@ namespace API.Hubs
             var userId = Guid.Parse(Context.User!.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
             var user = await _unitOfWork.Users.GetByIdAsync(userId);
+
+
             if (user != null)
             {
                 _onlineTracker.Add(userId, user.Username, Context.ConnectionId);

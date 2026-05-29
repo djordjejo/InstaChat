@@ -32,7 +32,13 @@ namespace Infrastructure.Persistence.Repository
         {
             return _connections.Values.Any(u=> u.UserId == userId);
         }
-
+        public List<string> GetConnectionIdsForUser(Guid userId)
+        {
+            return _connections
+                .Where(kvp => kvp.Value.UserId == userId)
+                .Select(kvp => kvp.Key)
+                .ToList();
+        }
 
         public void Remove(string connectionId)
         {

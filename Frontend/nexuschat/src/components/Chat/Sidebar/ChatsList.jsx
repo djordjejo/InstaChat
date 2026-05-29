@@ -21,7 +21,7 @@ export default function ChatsList({ chats, activeChatId, onChatSelect, unreadMes
                             <div
                                 key={c.conversationId}
                                 onClick={() => onChatSelect(c.conversationId)}
-                                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition cursor-pointer ${activeChatId === c.conversationId ? "bg-blue-600/10" : "hover:bg-black/5"}`}
+                                className={`flex items-center rounded-lg px-3 py-2 text-sm transition cursor-pointer ${activeChatId === c.conversationId ? "bg-blue-600/10" : "hover:bg-black/5"}`}
                             >
                                 <Avatar initials={c.conversationName?.slice(0, 2).toUpperCase()} size="sm" />
                                 <div className="flex-1 min-w-0">

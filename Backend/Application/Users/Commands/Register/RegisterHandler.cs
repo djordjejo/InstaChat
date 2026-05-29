@@ -22,7 +22,7 @@ namespace Application.Users.Commands.Register
         {
             var existingUser = await unitOfWork.Users.GetUserByEmail(command.Email);
             if (existingUser != null)
-                throw new Exception("User with this email already exists.");
+                throw new Exception("User with this email already exists!");
 
             var user = new User()
             {

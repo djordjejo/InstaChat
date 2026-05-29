@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 export default function ChatHeader({ chat, onDeleteChat }) {
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef(null);
+
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -35,7 +36,6 @@ export default function ChatHeader({ chat, onDeleteChat }) {
                 </div>
             </div>
 
-            {/* Desni deo — 3 tačkice + dropdown */}
             <div className="relative" ref={menuRef}>
                 <button
                     onClick={() => setMenuOpen(!menuOpen)}
@@ -87,7 +87,6 @@ export default function ChatHeader({ chat, onDeleteChat }) {
                             Arhiviraj razgovor
                         </button>
 
-                        {/* Separator pre destruktivne akcije */}
                         <div className="h-px bg-black/[0.06]" />
 
                         <button

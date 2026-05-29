@@ -33,8 +33,11 @@ namespace Application.Conversations.Queries.GetChats
                 Messages = conversation.Messages.Select(x => new MessageDto
                 {
                     MessageId = x.Id,
+                    ConversationId = x.ConversationId,
                     Content = x.Content,
-                    SenderUsername = x.Sender.Username
+                    SentAt = x.SentAt,
+                    SenderUsername = x.Sender.Username,
+                    IsEdited = x.IsEdited ?? false
                 }).ToList(),
                 Members = conversation.Members.Select(x => new MemberDto
                 {

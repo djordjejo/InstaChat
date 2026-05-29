@@ -54,7 +54,8 @@ namespace Infrastructure.Persistence.DBContext
 
             modelBuilder.Entity<User>()
                 .Property(u => u.Username)
-                .HasMaxLength(50);
+                .HasMaxLength(50)
+                .IsUnicode();
 
             modelBuilder.Entity<User>()
                 .Property(u => u.Email)
