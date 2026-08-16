@@ -7,9 +7,9 @@ using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
-
 namespace API.Hubs
 {
+    [Authorize]
     public class ChatHub : Hub
     {
         private readonly IUnitOfWork _unitOfWork;
