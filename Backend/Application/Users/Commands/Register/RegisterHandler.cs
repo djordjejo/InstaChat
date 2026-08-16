@@ -1,11 +1,8 @@
-﻿using Domain.Entities;
+﻿using Application.Common.Exceptions;
+using Domain.Entities;
 using Domain.Interfaces;
 using MediatR;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
 
 namespace Application.Users.Commands.Register
 {
@@ -22,7 +19,7 @@ namespace Application.Users.Commands.Register
         {
             var existingUser = await unitOfWork.Users.GetUserByEmail(command.Email);
             if (existingUser != null)
-                throw new Exception("User with this email already exists.");
+                throw new ConflictException("Nalog sa ovim podacima već postoji.");
 
             var user = new User()
             {

@@ -1,11 +1,9 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
 import axiosInstance from "../api/axiosInstance";
 import signInBg from "../assets/SignIn-bg.jpg";
 
 export default function Register() {
-    const { login } = useAuth();
     const navigate = useNavigate();
 
     const [user, setUser] = useState({
@@ -39,26 +37,27 @@ export default function Register() {
 
         setLoading(true);
         try {
-            const { data } = await axiosInstance.post("/auth/register", {
+            await axiosInstance.post("/auth/register", {
                 username: user.username,
                 email: user.email,
                 password: user.password,
             });
 
-            // NAPOMENA: uskladi sa potpisom iz AuthContext-a.
-            // LogIn.jsx zove login(token) - ovde je bilo login(user, token).
-            login(data.token);
-            navigate("/", { replace: true });
+            // Backend na /auth/register NE vraca token - RegisterResult ima samo
+            // UserId, Username i Email. Auto-login zato nije moguc; saljemo
+            // korisnika na prijavu. replace:true da Back ne vrati na formu.
+            navigate("/login", { replace: true });
         } catch (err) {
-            // response.data moze biti string, objekat sa .message, ili ProblemDetails.
-            // Bez ovog svodjenja React baca "Objects are not valid as a React child".
+            // response.data moze biti string, objekat sa .message, ili ProblemDetails
+            // (koji koristi .detail). Bez ovog svodjenja React baca
+            // "Objects are not valid as a React child".
             const payload = err.response?.data;
             const message =
                 typeof payload === "string"
                     ? payload
-                    : payload?.message ?? payload?.title ?? null;
+                    : payload?.detail ?? payload?.title ?? payload?.message ?? null;
 
-            setError(message || "Registration failed. Please try again.");
+            setError(message || "Registracija nije uspela. Pokusaj ponovo.");
         } finally {
             setLoading(false);
         }

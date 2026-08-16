@@ -33,10 +33,6 @@ namespace API.Controllers
             public async Task<IActionResult> Login(LoginQuery query)
             {
                 var result = await _mediator.Send(query);
-
-                if (result == null)
-                    return Unauthorized("Pogrešan email ili lozinka.");
-
                 return Ok(result);
             }
         }

@@ -1,30 +1,13 @@
-import axiosInstance from './axiosInstance';
+import axiosInstance from "./axiosInstance";
 
 export const sendMessage = async (chatId, message) => {
-    try{
-        const response = await axiosInstance.post(`/message/send`, 
-        {
-            conversationId: chatId,
-            content: message
-        });
-        return response.data;
-    }catch(error)
-    {
-        throw new Error("Failed to send a message: " + error.message);
-    }
-}
-export const reciveMessage = async (chatId, message)=>{
-    try{
-        const response = await axiosInstance.post(`/message/recive`,
-        {
-            conversationId: chatId,
-            content: message
-        });
-        return response.data;
-    }catch(error)
-    {
-        throw new Error("Failed to receive a message: " + error.message);
+    const response = await axiosInstance.post("/message/send", {
+        conversationId: chatId,
+        content: message,
+    });
+    return response.data;
+};
 
-    }
-
-}
+// Uklonjen je "reciveMessage" - gadjao je /message/recive koji ne postoji na
+// backendu, nigde se nije uvozio, a konceptualno je i bio pogresan: poruke
+// stizu preko SignalR-a, ne HTTP POST-om.

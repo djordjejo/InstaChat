@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using API.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +17,9 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSignalR();
 builder.Services.AddSwaggerGen();
+
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options => {
@@ -75,6 +79,17 @@ builder.Services.AddScoped<IChatNotificationService, ChatNotificationService>();
 builder.Services.AddSingleton<IOnlineUserTracker, OnlineUserTracker>();
 
 var app = builder.Build();
+app.UseExceptionHandler();
+
+// Migracije se primenjuju na startu, pa se projekat podize bez rucnog
+// "dotnet ef database update". Za pravu produkciju ovo bi islo u deploy
+// korak (vise instanci bi se otimalo oko iste migracije), ali za lokalni
+// razvoj i demonstraciju je najprakticnije - klonira se repo i pokrene.
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Database.MigrateAsync();
+}
 
 if (app.Environment.IsDevelopment())
 {

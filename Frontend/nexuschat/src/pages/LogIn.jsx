@@ -31,15 +31,11 @@ export default function LogIn() {
             login(data.token);
             navigate("/", { replace: true });
         } catch (err) {
-            // response.data moze biti string, objekat sa .message, ili ProblemDetails.
-            // Bez ovog svodjenja React baca "Objects are not valid as a React child".
-            const payload = err.response?.data;
-            const message =
-                typeof payload === "string"
-                    ? payload
-                    : payload?.message ?? payload?.title ?? null;
-
-            setError(message || "Login failed. Please check your credentials.");
+           setError(
+            err.response?.data?.detail ||
+            err.response?.data?.title ||
+            "Prijava nije uspela. Proveri podatke."
+        );
         } finally {
             setLoading(false);
         }

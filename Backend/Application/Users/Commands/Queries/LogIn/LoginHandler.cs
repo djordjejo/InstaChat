@@ -1,4 +1,5 @@
-﻿using Domain.Interfaces;
+﻿using Application.Common.Exceptions;
+using Domain.Interfaces;
 using MediatR;
 
 namespace Application.Users.Commands.Queries.LogIn
@@ -18,12 +19,11 @@ namespace Application.Users.Commands.Queries.LogIn
         {
             var user = await unitOfWork.Users.GetUserByEmail(query.Email);
             if (user == null)
-                throw new Exception("Pogrešan email ili lozinka");
+                throw new InvalidCredentialsException("Pogrešan email ili lozinka.");
 
             bool isValid = BCrypt.Net.BCrypt.Verify(query.Password, user.PasswordHash);
             if (!isValid)
-                throw new Exception("Pogrešan email ili lozinka");
-
+                throw new InvalidCredentialsException("Pogrešan email ili lozinka.");
 
             var token = jwtService.GenerateToken(user);
 

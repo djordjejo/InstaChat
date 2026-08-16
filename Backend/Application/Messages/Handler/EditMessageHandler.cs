@@ -1,17 +1,15 @@
-﻿using Application.DTO.Attachment;
+﻿using Application.Common.Exceptions;
+using Application.DTO.Attachment;
 using Application.DTO.Messages;
 using Application.Messages.Command;
-using Domain.Entities;
 using Domain.Interfaces;
 using MediatR;
-using System.Reflection;
 
 namespace Application.Messages.Handler
 {
     public class EditMessageHandler : IRequestHandler<EditMessageCommand, MessageDto>
     {
         private readonly IUnitOfWork _unitOfWork;
-
         public EditMessageHandler(IUnitOfWork unitOfWork)
         {
             _unitOfWork = unitOfWork;
@@ -21,10 +19,11 @@ namespace Application.Messages.Handler
         {
             var message  = await _unitOfWork.Messages.GetByIdAsync(command.MessageId);
             if (message == null || message.IsDeleted == true)
-                throw new KeyNotFoundException("Message not found.");
+                throw new NotFoundException("Poruka nije pronađena.");
 
-            if(message.SenderId != command.EditorId)
-                throw new UnauthorizedAccessException("You can only edit your own messages.");
+            if (message.SenderId != command.EditorId)
+                throw new ForbiddenException("Možete menjati samo svoje poruke."); 
+           
             var sender = await _unitOfWork.Users.GetByIdAsync(command.EditorId);
 
             message.Content = command.Content;
@@ -36,10 +35,12 @@ namespace Application.Messages.Handler
             return new MessageDto
             {
                 MessageId = message.Id,
+                ConversationId = message.ConversationId,     
+                SenderId = message.SenderId,                 
                 Content = message.Content,
-                IsEdited = message.IsEdited.Value,
-                SentAt = message.SentAt,       
+                SentAt = DateTime.SpecifyKind(message.SentAt, DateTimeKind.Utc),
                 SenderUsername = sender.Username,
+                IsEdited = message.IsEdited ?? false,
                 Attachments = new List<AttachmentDto>()
             };
         }

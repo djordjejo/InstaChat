@@ -1,12 +1,8 @@
-﻿using Application.DTO.Messages;
+﻿using Application.Common.Exceptions;
 using Application.Messages.Command;
 using Domain.Interfaces;
 using MediatR;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
 
 namespace Application.Messages.Handler
 {
@@ -22,10 +18,11 @@ namespace Application.Messages.Handler
         {
             var message = await _unitOfWork.Messages.GetByIdAsync(command.MessageId);
             if (message == null)
-                return false;
+                throw new NotFoundException("Poruka nije pronađena.");
+
 
             if (message.SenderId != command.SenderId)
-                throw new Exception("Nemate dozvolu da obrišete ovu poruku");
+                throw new ForbiddenException("Nemate dozvolu da obrišete ovu poruku.");
 
             message.IsDeleted = true;
             await _unitOfWork.Messages.UpdateAsync(message);

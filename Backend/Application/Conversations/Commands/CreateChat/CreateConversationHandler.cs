@@ -1,7 +1,7 @@
-﻿using Application.DTO;
-using Application.DTO.Conversation;
+﻿using Application.DTO.Conversation;
 using Application.DTO.Member;
 using Application.DTO.Messages;
+using Application.Interfaces;
 using Domain.Entities;
 using Domain.EnumMember;
 using Domain.Interfaces;
@@ -12,10 +12,14 @@ namespace Application.Conversations.Commands.CreateChat;
 public class CreateConversationHandler : IRequestHandler<CreateConversationQuery, ConversationDto>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IChatNotificationService _chatNotificationService;
 
-    public CreateConversationHandler(IUnitOfWork unitOfWork)
+    public CreateConversationHandler(
+        IUnitOfWork unitOfWork,
+        IChatNotificationService chatNotificationService)
     {
         _unitOfWork = unitOfWork;
+        _chatNotificationService = chatNotificationService;
     }
 
     public async Task<ConversationDto> Handle(
@@ -66,6 +70,8 @@ public class CreateConversationHandler : IRequestHandler<CreateConversationQuery
         var fullConversation = await _unitOfWork.ConversationMembers
             .GetConversationAsync(conversation.Id);
 
+        var memberIds = fullConversation.Members.Select(m => m.UserId).ToList();
+        await _chatNotificationService.ConversationCreatedAsync(fullConversation.Id, memberIds);
 
         return new ConversationDto
         {

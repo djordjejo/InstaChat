@@ -29,7 +29,6 @@ namespace API.Controllers
             return Ok(result);
         }
 
-
         [HttpGet]
         public async Task<IActionResult> GetConversations()
         {
@@ -52,7 +51,8 @@ namespace API.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteChat(Guid id)
         {
-            var result = await _mediator.Send(new DeleteConversationCommand(id));
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            await _mediator.Send(new DeleteConversationCommand(id, userId));
             return NoContent();
         }
     }

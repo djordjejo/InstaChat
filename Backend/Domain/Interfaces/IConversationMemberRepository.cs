@@ -1,11 +1,16 @@
-﻿using Domain.Entities;
+using Domain.Entities;
 
 namespace Domain.Interfaces
 {
     public interface IConversationMemberRepository : IRepository<ConversationMember>
     {
-        public Task<IEnumerable<Conversation>> GetConversationsAsync(Guid id);
-        public Task<Conversation> GetConversationAsync(Guid id);
+        // --- citanje razgovora ---
+        Task<IEnumerable<Conversation>> GetConversationsAsync(Guid userId);
+        Task<Conversation> GetConversationAsync(Guid conversationId);
 
+        // --- provere clanstva ---
+        Task<bool> IsMemberAsync(Guid userId, Guid conversationId);
+        Task<ConversationMember?> GetMemberAsync(Guid userId, Guid conversationId);
+        Task<List<Guid>> GetMemberIdsAsync(Guid conversationId);
     }
 }

@@ -1,30 +1,55 @@
-﻿using Application.DTO.Conversation;
+﻿using Application.Common.Exceptions;
+using Application.Interfaces;
+using Domain.EnumMember;
 using Domain.Interfaces;
 using MediatR;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Application.Conversations.Commands.DeleteChat
 {
     public class DeleteConversationHandler : IRequestHandler<DeleteConversationCommand, Unit>
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IChatNotificationService _chatNotificationService;
 
-        public DeleteConversationHandler(IUnitOfWork unitOfWork)
+        public DeleteConversationHandler(
+            IUnitOfWork unitOfWork,
+            IChatNotificationService chatNotificationService)
         {
             _unitOfWork = unitOfWork;
+            _chatNotificationService = chatNotificationService;
         }
 
         public async Task<Unit> Handle(DeleteConversationCommand request, CancellationToken cancellationToken)
         {
-            var chat = _unitOfWork.Conversations.GetByIdAsync(request.ConversationId).Result;
-            await _unitOfWork.Conversations.DeleteAsync(chat);
+           
+            var member = await _unitOfWork.ConversationMembers
+                .GetMemberAsync(request.UserId, request.ConversationId);
+
+            if (member == null)
+                throw new ForbiddenException("Nemate pristup ovom razgovoru.");
+
+            var conversation = await _unitOfWork.Conversations
+                .GetByIdAsync(request.ConversationId);
+
+            if (conversation == null)
+                throw new NotFoundException("Razgovor nije pronađen.");
+
+            // U 1-na-1 razgovoru su oba ucesnika ravnopravna. U grupi brisanje
+            // sme samo admin, inace bi svako mogao da obrise tudju grupu.
+            if (conversation.IsGroup && member.Role != MemberRole.Admin)
+                throw new ForbiddenException("Samo administrator grupe može obrisati razgovor.");
+
+            // Clanove kupimo PRE brisanja - posle kaskade ih vise nema u bazi.
+            var memberIds = await _unitOfWork.ConversationMembers
+                .GetMemberIdsAsync(request.ConversationId);
+
+            await _unitOfWork.Conversations.DeleteAsync(conversation);
             await _unitOfWork.Commit(cancellationToken);
 
-            return Unit.Value; 
+            await _chatNotificationService.ConversationDeletedAsync(
+                request.ConversationId, memberIds);
+
+            return Unit.Value;
         }
     }
 }

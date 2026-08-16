@@ -1,44 +1,32 @@
-import axiosInstance from './axiosInstance';
+import axiosInstance from "./axiosInstance";
+
+// Greske se propustaju kakve jesu. Ranije se ovde pravio novi Error(...),
+// cime se gubio error.response - a u njemu su i HTTP status i ProblemDetails
+// telo sa porukom sa servera. Pozivalac je video samo "Request failed with
+// status code 500" i nije mogao da razlikuje 403 od 404 od 500.
 
 export const getChats = async () => {
-    try{
-        const response = await axiosInstance.get("/conversation");
-        return response.data;
-    }catch(error)
-    {
-        throw new Error("Failed to fetch chats: " + error.message);
-    }
-}
+    const response = await axiosInstance.get("/conversation");
+    return response.data;
+};
+
 export const createChat = async ({ name, memberIds, isGroup }) => {
-    try {
-        const response = await axiosInstance.post("/conversation/create", {
-            name,
-            memberIds,
-            isGroup
-        });
-        return response.data;
-    } catch (error) {
-        throw new Error("Failed to create a chat: " + error.message);
-    }
-}
+    const response = await axiosInstance.post("/conversation/create", {
+        name,
+        memberIds,
+        isGroup,
+    });
+    return response.data;
+};
+
 export const deleteChat = async (chatId) => {
+    const response = await axiosInstance.delete(`/conversation/${chatId}`);
+    return response.data;
+};
 
-    try{
-        const response =  await axiosInstance.delete(`/conversation/${chatId}`);
-        return response.data;
-    }catch(error)
-    {
-        throw new Error("Failed to delete a chat: " + error.message);
-    }
-}
 export const viewChat = async (chatId) => {
-    try{
-       const response = await axiosInstance.get(`/conversation/getConversation/${chatId}`, );
-        return response.data;
-
-    }catch(error)
-    {
-        throw new Error("Failed to fetch a chat: " + error.message);
-
-    }
-}
+    const response = await axiosInstance.get(
+        `/conversation/getConversation/${chatId}`
+    );
+    return response.data;
+};

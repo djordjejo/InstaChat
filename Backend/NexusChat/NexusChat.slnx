@@ -1,7 +1,0 @@
-<Solution>
-  <Project Path="../API/API.csproj" Id="46d82b62-7436-410f-98e4-98f52a9f2be2" />
-  <Project Path="../Application/Application.csproj" Id="87b409ab-a410-45e0-856b-f4a6b8fc03c4" />
-  <Project Path="../Domain/Domain.csproj" Id="a0ea2837-596c-4044-8997-71774bb6d3e2" />
-  <Project Path="../Infrastructure/Infrastructure.csproj" Id="c96589b1-abef-4adf-9670-2635f6d26cca" />
-  <Project Path="NexusChat.csproj" />
-</Solution>

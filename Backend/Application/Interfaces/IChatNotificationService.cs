@@ -10,5 +10,8 @@ namespace Application.Interfaces
     public interface IChatNotificationService
     {
         Task SendMessageAsync(Guid conversationId, MessageDto message);
+        Task ConversationCreatedAsync(Guid conversationId, IEnumerable<Guid> memberIds);
+        Task ConversationDeletedAsync(Guid conversationId, IEnumerable<Guid> memberIds);
+
     }
 }

@@ -1,9 +1,10 @@
-﻿using Application.DTO.Conversation;
+﻿using Application.Common.Exceptions;
+using Application.DTO.Attachment;
+using Application.DTO.Conversation;
 using Application.DTO.Member;
 using Application.DTO.Messages;
 using Domain.Interfaces;
 using MediatR;
-
 
 namespace Application.Conversations.Queries.GetChats
 {
@@ -18,9 +19,13 @@ namespace Application.Conversations.Queries.GetChats
 
         public async Task<ConversationDto> Handle(GetConversationQuery query, CancellationToken cancellationToken)
         {
-            var conversation = await _unitOfWork
-                .ConversationMembers
-                .GetConversationAsync(query.ConversationId);
+            if (!await _unitOfWork.ConversationMembers.IsMemberAsync(query.CurrentUserId, query.ConversationId))
+                throw new ForbiddenException("Nemate pristup ovom razgovoru.");
+
+            var conversation = await _unitOfWork.ConversationMembers.GetConversationAsync(query.ConversationId);
+
+            if (conversation == null)
+                throw new NotFoundException("Razgovor nije pronađen.");
 
             return new ConversationDto
             {
@@ -33,8 +38,13 @@ namespace Application.Conversations.Queries.GetChats
                 Messages = conversation.Messages.Select(x => new MessageDto
                 {
                     MessageId = x.Id,
+                    ConversationId = x.ConversationId,
+                    SenderId = x.SenderId,
                     Content = x.Content,
-                    SenderUsername = x.Sender.Username
+                    SentAt = DateTime.SpecifyKind(x.SentAt, DateTimeKind.Utc),
+                    SenderUsername = x.Sender.Username,
+                    IsEdited = x.IsEdited ?? false,
+                    Attachments = new List<AttachmentDto>()
                 }).ToList(),
                 Members = conversation.Members.Select(x => new MemberDto
                 {

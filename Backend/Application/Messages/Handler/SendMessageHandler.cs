@@ -1,4 +1,5 @@
-﻿using Application.DTO.Attachment;
+﻿using Application.Common.Exceptions;
+using Application.DTO.Attachment;
 using Application.DTO.Messages;
 using Application.Interfaces;
 using Application.Messages.Command;
@@ -21,9 +22,8 @@ namespace Application.Messages.Handler
 
         public async Task<MessageDto> Handle(SendMessageCommand command, CancellationToken cancellationToken)
         {
-            var conversation = await _unitOfWork.Conversations.GetByIdAsync(command.ConversationId);
-            if (conversation == null)
-                throw new Exception("Konverzacija ne postoji");
+            if (!await _unitOfWork.ConversationMembers.IsMemberAsync(command.SenderId, command.ConversationId))
+                throw new ForbiddenException("Niste član ovog razgovora.");
 
             var message = new Message
             {
@@ -44,10 +44,11 @@ namespace Application.Messages.Handler
             {
                 MessageId = message.Id,
                 ConversationId = message.ConversationId,
+                SenderId = command.SenderId,
                 Content = message.Content,
-                SentAt = message.SentAt,
+                SentAt = DateTime.SpecifyKind(message.SentAt, DateTimeKind.Utc),
                 SenderUsername = sender?.Username ?? "Unknown",
-                IsEdited = message.IsEdited.Value,
+                IsEdited = message.IsEdited ?? false,
                 Attachments = new List<AttachmentDto>()
             };
             await _chatNotificationService.SendMessageAsync(
