@@ -1,4 +1,5 @@
-﻿using Application.DTO.Conversation;
+using Application.Common;
+using Application.DTO.Conversation;
 using Application.DTO.Member;
 using Domain.Interfaces;
 using MediatR;
@@ -11,35 +12,29 @@ namespace Application.Conversations.Queries.GetChats
 
         public GetConversationsHandler(IUnitOfWork unitOfWork)
         {
-            this._unitOfWork = unitOfWork;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task<List<ConversationsDto>> Handle(
-         GetConversationsQuery query,
-         CancellationToken cancellationToken)
+            GetConversationsQuery query,
+            CancellationToken cancellationToken)
         {
             var conversations = await _unitOfWork.ConversationMembers
                 .GetConversationsAsync(query.UserId);
 
-            var result = conversations.Select(x => new ConversationsDto
+            return conversations.Select(x => new ConversationsDto
             {
                 ConversationId = x.Id,
-                ConversationName = x.IsGroup
-                    ? x.Name
-                    : x.Members.First(m => m.UserId != query.UserId).User.Username,
+                ConversationName = x.DisplayNameFor(query.UserId),
+                IsGroup = x.IsGroup,
                 Members = x.Members.Select(member => new MemberDto
                 {
-                    UserId = member.UserId,         
+                    UserId = member.UserId,
                     Name = member.User.Username,
+                    Role = member.Role,
                     IsOnline = member.User.IsOnline,
-                }
-
-
-                ).ToList()
+                }).ToList()
             }).ToList();
-
-            return result;
         }
-
     }
 }

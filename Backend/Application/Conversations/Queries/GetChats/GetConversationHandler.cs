@@ -1,4 +1,5 @@
-﻿using Application.Common.Exceptions;
+using Application.Common;
+using Application.Common.Exceptions;
 using Application.DTO.Attachment;
 using Application.DTO.Conversation;
 using Application.DTO.Member;
@@ -30,9 +31,7 @@ namespace Application.Conversations.Queries.GetChats
             return new ConversationDto
             {
                 ConversationId = conversation.Id,
-                ConversationName = conversation.IsGroup
-                    ? conversation.Name
-                    : conversation.Members.First(m => m.UserId != query.CurrentUserId).User.Username,
+                ConversationName = conversation.DisplayNameFor(query.CurrentUserId),
                 IsGroup = conversation.IsGroup,
                 CreatedAt = conversation.CreatedAt,
                 Messages = conversation.Messages.Select(x => new MessageDto
@@ -49,6 +48,7 @@ namespace Application.Conversations.Queries.GetChats
                 Members = conversation.Members.Select(x => new MemberDto
                 {
                     UserId = x.UserId,
+                    Role = x.Role,
                     Name = x.User.Username,
                     IsOnline = x.User.IsOnline
                 }).ToList(),
