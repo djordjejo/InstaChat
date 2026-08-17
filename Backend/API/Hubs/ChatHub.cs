@@ -1,4 +1,4 @@
-﻿using Domain.Interfaces;
+using Domain.Interfaces;
 using Microsoft.AspNetCore.Authorization;   
 using Microsoft.AspNetCore.SignalR;
 using System.Security.Claims;
@@ -78,18 +78,34 @@ namespace API.Hubs
 
             if (userId.HasValue)
             {
+                // Korisnik moze imati vise otvorenih konekcija (vise tabova).
+                // Offline je tek kad nestane POSLEDNJA. Ranije je upis u bazu
+                // bio VAN ovog if-a, pa je zatvaranje jednog taba proglasavalo
+                // korisnika offline iako je i dalje bio prisutan.
                 if (!_onlineTracker.IsOnline(userId.Value))
                 {
                     await Clients.Others.SendAsync("UserOffline", userId.Value);
+
+                    var user = await _unitOfWork.Users.GetByIdAsync(userId.Value);
+
+                    // Null je moguc ako je nalog obrisan dok je konekcija bila
+                    // otvorena. OnConnectedAsync je ovu proveru imao, ovde je
+                    // nedostajala.
+                    if (user != null)
+                    {
+                        user.IsOnline = false;
+                        user.LastSeen = DateTime.UtcNow;
+
+                        await _unitOfWork.Users.UpdateAsync(user);
+
+                        // CancellationToken.None, NE Context.ConnectionAborted.
+                        // Taj token je pri diskonektu vec otkazan, pa je
+                        // SaveChangesAsync odmah bacao OperationCanceledException
+                        // i IsOnline se NIKAD nije upisao u bazu - svi korisnici
+                        // su u bazi zauvek ostajali "online".
+                        await _unitOfWork.Commit(CancellationToken.None);
+                    }
                 }
-                var user = await _unitOfWork.Users.GetByIdAsync(userId.Value);
-
-                user.IsOnline = false;
-                user.LastSeen = DateTime.UtcNow;
-
-                await _unitOfWork.Users.UpdateAsync(user);
-                await _unitOfWork.Commit(Context.ConnectionAborted);
-
             }
 
             await base.OnDisconnectedAsync(exception);

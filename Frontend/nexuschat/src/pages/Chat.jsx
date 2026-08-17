@@ -17,6 +17,13 @@ import ChatHeader from "../components/Chat/ChatView/ChatHeader";
 import MessagesList from "../components/Chat/ChatView/MessagesList";
 import MessageInput from "../components/Chat/ChatView/MessageInput";
 
+// Ista poruka moze stici dva puta: jednom kao HTTP odgovor na slanje, jednom
+// preko SignalR-a. Dodavanje se zato radi kroz ovu funkciju, koja poredi po
+// messageId i vraca ISTU referencu kad nema sta da se doda - pa React
+// preskace nepotreban re-render.
+const appendMessage = (list, message) =>
+    list.some((m) => m.messageId === message.messageId) ? list : [...list, message];
+
 export default function Chat() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
@@ -68,19 +75,41 @@ export default function Chat() {
             return next;
         });
 
-        // JoinConversation je premesten ovde iz tri odvojena mesta.
-        // Ranije novi 1-na-1 chat nije ulazio u grupu, pa poruke nisu stizale
-        // u realnom vremenu dok se strana ne refreshuje.
-        connection.invoke("JoinConversation", activeChatId).catch((err) => {
-            console.error("JoinConversation nije uspeo:", err);
-        });
+        // "cancelled" stiti od trke pri brzom prebacivanju razgovora: ako
+        // korisnik klikne drugi chat dok prvi jos ucitava, stari odgovor se
+        // odbacuje umesto da pregazi novi.
+        let cancelled = false;
 
-        const fetchChat = async () => {
-            const conversation = await viewChat(activeChatId);
-            setChat(conversation ?? null);
-            setMessages(conversation?.messages ?? []);
+        const openConversation = async () => {
+            try {
+                // AWAIT je ovde kljucan. Ranije je invoke bio "fire and forget",
+                // pa je "chat" mogao da se iscrta - zajedno sa poljem za unos -
+                // dok konekcija jos nije usla u SignalR grupu. Poruka poslata u
+                // tom prozoru emitovala bi se na Group(id) koju jos ne slusas,
+                // i videlo bi je se tek posle refresha.
+                await connection.invoke("JoinConversation", activeChatId);
+            } catch (err) {
+                console.error("JoinConversation nije uspeo:", err);
+            }
+
+            if (cancelled) return;
+
+            try {
+                const conversation = await viewChat(activeChatId);
+                if (cancelled) return;
+
+                setChat(conversation ?? null);
+                setMessages(conversation?.messages ?? []);
+            } catch (err) {
+                console.error("Učitavanje razgovora nije uspelo:", err);
+            }
         };
-        fetchChat();
+
+        openConversation();
+
+        return () => {
+            cancelled = true;
+        };
     }, [activeChatId, connection]);
 
     const handleLogout = () => {
@@ -90,12 +119,23 @@ export default function Chat() {
 
     const handleSendMessage = async (message) => {
         if (!message.trim()) return;
+
+        const text = message;
         setMessageTxt("");
+
         try {
-            await sendMessage(activeChatId, message);
+            const sent = await sendMessage(activeChatId, text);
+
+            // Sopstvenu poruku prikazujemo odmah iz HTTP odgovora, ne cekamo
+            // da se vrati preko SignalR-a. Tako se vidi cak i ako ulazak u
+            // grupu jos nije zavrsio. Ako stigne i preko huba, appendMessage
+            // je odbacuje po messageId.
+            if (sent) {
+                setMessages((prev) => appendMessage(prev, sent));
+            }
         } catch (err) {
             console.error("Slanje nije uspelo:", err);
-            setMessageTxt(message);
+            setMessageTxt(text);
         }
     };
 
@@ -104,7 +144,7 @@ export default function Chat() {
 
         const handleNewMessage = (message) => {
             if (message.conversationId === activeChatId) {
-                setMessages((prev) => [...prev, message]);
+                setMessages((prev) => appendMessage(prev, message));
             } else {
                 setUnreadMessages((prev) => {
                     const next = new Map(prev);
