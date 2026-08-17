@@ -183,23 +183,36 @@ export default function Chat() {
     const handleCreateChat = async (userId) => {
         if (!userId) return;
 
-        const existingChat = chats.find((c) =>
-            c.members?.some((m) => m.userId === userId)
+        const targetId = userId.toLowerCase();
+
+        // Trazimo POSTOJECI 1-na-1 razgovor bas sa tim covekom:
+        //   - nije grupa
+        //   - ima tacno dva clana
+        //   - jedan od njih je onaj na koga si kliknuo
+        //
+        // Ranije je uslov bio samo "sadrzi tog korisnika", pa je klik na Marka
+        // otvarao prvu GRUPU u kojoj se Marko nalazi. Ako ste u zajednickoj
+        // grupi, privatni razgovor nisi mogao ni da zapocnes.
+        const existingChat = chats.find(
+            (c) =>
+                !c.isGroup &&
+                c.members?.length === 2 &&
+                c.members.some((m) => m.userId?.toLowerCase() === targetId)
         );
+
         if (existingChat) {
             setActiveChatId(existingChat.conversationId);
             setSidebarView("chats");
             return;
         }
 
-        // Ranije je ovde stajalo onlineUser?.username - a onlineUser je izveden iz
-        // trenutno OTVORENOG chata, ne iz korisnika koga si kliknuo. Novi chat je
-        // dobijao ime pogresnog sagovornika ili fallback "Novi cet".
-        const target = otherOnlineUsers.find((u) => u.userId === userId);
-
         try {
             const newChat = await createChat({
-                name: target?.username || "Novi razgovor",
+                // Za 1-na-1 razgovor "Name" ostaje null. Backend ga ionako
+                // ignorise (DisplayNameFor vraca ime sagovornika, razlicito za
+                // svakog ucesnika), pa bi upisivanje jednog imena u bazu bilo
+                // tacno samo za jednu stranu.
+                name: null,
                 isGroup: false,
                 memberIds: [userId],
             });
