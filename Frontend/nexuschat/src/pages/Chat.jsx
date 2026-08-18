@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { createChat, getChats, viewChat, deleteChat } from "../api/chatsApi";
 import { sendMessage } from "../api/messageApi";
+import { getUsers } from "../api/userApi";
 import { useSignalRConnection } from "../hooks/useSignalRConnection";
 import { useOnlineUsers } from "../hooks/useOnlineUsers";
 
@@ -29,6 +30,7 @@ export default function Chat() {
     const navigate = useNavigate();
 
     const [chats, setChats] = useState([]);
+    const [users, setUsers] = useState([]);
     const [chat, setChat] = useState(null);
 
     const [activeChatId, setActiveChatId] = useState(null);
@@ -41,7 +43,27 @@ export default function Chat() {
 
     const connection = useSignalRConnection();
     const { otherOnlineUsers } = useOnlineUsers(connection, user);
+
+    // Set malih slova - poredjenje GUID-ova iz dva izvora (baza i SignalR)
+    // mora biti neosetljivo na velicinu slova.
+    const onlineIds = new Set(
+        otherOnlineUsers.map((u) => u.userId?.toLowerCase()).filter(Boolean)
+    );
     const initials = user?.username?.slice(0, 2).toUpperCase();
+
+    // Puna lista korisnika iz baze. Prisutnost i dalje stize preko SignalR-a -
+    // ova lista samo obezbedjuje da se offline korisnici uopste vide.
+    useEffect(() => {
+        const fetchUsers = async () => {
+            try {
+                const all = await getUsers();
+                setUsers(all ?? []);
+            } catch (err) {
+                console.error("Učitavanje korisnika nije uspelo:", err);
+            }
+        };
+        fetchUsers();
+    }, []);
 
     useEffect(() => {
         const fetchChats = async () => {
@@ -329,7 +351,8 @@ export default function Chat() {
                     )}
                     {sidebarView === "activeUsers" && (
                         <ActiveUsersList
-                            users={otherOnlineUsers}
+                            users={users}
+                            onlineIds={onlineIds}
                             onCreateChat={handleCreateChat}
                         />
                     )}
@@ -404,7 +427,8 @@ export default function Chat() {
 
             {showCreateGroupModal && (
                 <CreateGroupModal
-                    onlineUsers={otherOnlineUsers}
+                    users={users}
+                    onlineIds={onlineIds}
                     onClose={() => setShowCreateGroupModal(false)}
                     onCreate={handleCreateGroup}
                 />

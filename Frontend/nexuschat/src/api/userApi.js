@@ -1,11 +1,9 @@
-import axiosInstance from "./axiosInstance"
-export const allUsers = async () => 
-{  
-    try{
-      const response = await axiosInstance.get("localhost://NexusChat/api/user");
-      return response.data;
-    }catch
-    {
-        throw new Error("IsActive function cant get a users");
-    }
-}
+import axiosInstance from "./axiosInstance";
+
+// Ranije je ovde stajalo axiosInstance.get("localhost://NexusChat/api/user") -
+// "localhost://" nije validna sema, pa bi axios to spojio sa baseURL-om u
+// besmislenu putanju. Uz to endpoint na backendu nije ni postojao.
+export const getUsers = async () => {
+    const response = await axiosInstance.get("/user");
+    return response.data;
+};

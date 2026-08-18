@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Avatar from "../../common/Avatar";
 
-export default function CreateGroupModal({ onlineUsers, onClose, onCreate }) {
+export default function CreateGroupModal({ users, onlineIds, onClose, onCreate }) {
     const [groupName, setGroupName] = useState("");
     const [selectedUserIds, setSelectedUserIds] = useState(new Set());
     const [submitting, setSubmitting] = useState(false);
@@ -60,13 +60,14 @@ export default function CreateGroupModal({ onlineUsers, onClose, onCreate }) {
                 </p>
 
                 <div className="mb-4 max-h-60 overflow-y-auto rounded-[10px] border border-slate-200">
-                    {onlineUsers.length === 0 ? (
+                    {users.length === 0 ? (
                         <p className="p-4 text-center text-xs text-slate-400">
-                            Nema online korisnika
+                            Nema drugih korisnika
                         </p>
                     ) : (
-                        onlineUsers.map((u) => {
+                        users.map((u) => {
                             const isSelected = selectedUserIds.has(u.userId);
+                            const isOnline = onlineIds.has(u.userId?.toLowerCase());
                             return (
                                 <button
                                     key={u.userId}
@@ -77,10 +78,18 @@ export default function CreateGroupModal({ onlineUsers, onClose, onCreate }) {
                                         (isSelected ? "bg-blue-50" : "hover:bg-slate-50")
                                     }
                                 >
-                                    <Avatar
-                                        initials={u.username?.slice(0, 2).toUpperCase()}
-                                        size="xs"
-                                    />
+                                    <span className="relative">
+                                        <Avatar
+                                            initials={u.username?.slice(0, 2).toUpperCase()}
+                                            size="xs"
+                                        />
+                                        <span
+                                            className={
+                                                "absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-white " +
+                                                (isOnline ? "bg-emerald-500" : "bg-slate-300")
+                                            }
+                                        />
+                                    </span>
                                     <span className="flex-1 truncate text-sm text-slate-800">
                                         {u.username}
                                     </span>
