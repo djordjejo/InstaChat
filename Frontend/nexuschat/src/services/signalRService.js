@@ -1,17 +1,15 @@
-import * as signalR from "@microsoft/signalr"
+import * as signalR from "@microsoft/signalr";
 
-let connection = null;
+const API_URL = import.meta.env.VITE_API_URL ?? "https://localhost:5001";
 
+// Nema vise modul-level "connection" promenljive. Ranije ju je svaki poziv
+// createConnection prepisivao, pa je getConnection() umeo da vrati zaustavljenu
+// instancu iz prethodnog mounta. Zivotni vek konekcije drzi useSignalRConnection
+// kroz useRef - to je jedino mesto koje o njoj treba da zna.
 export const createConnection = (token) =>
-{
-    connection = new signalR.HubConnectionBuilder()
-                            .withUrl("https://localhost:5001/hubs/chat",
-                                {
-                                    accessTokenFactory: () => token
-                                }
-                            ).withAutomaticReconnect()
-                            .build();
-    return connection;
-};
-
-export const getConnection = () => connection;
+    new signalR.HubConnectionBuilder()
+        .withUrl(`${API_URL}/hubs/chat`, {
+            accessTokenFactory: () => token,
+        })
+        .withAutomaticReconnect()
+        .build();

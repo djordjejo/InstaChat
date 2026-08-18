@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import Avatar from "../../common/Avatar";
+import { getInitials } from "../../../utility/getInitials";
 
 export default function ChatHeader({ chat, isPeerOnline, onDeleteChat }) {
     const [menuOpen, setMenuOpen] = useState(false);
@@ -42,7 +43,7 @@ export default function ChatHeader({ chat, isPeerOnline, onDeleteChat }) {
         <header className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 md:px-6">
             <div className="flex min-w-0 items-center gap-3">
                 <Avatar
-                    initials={chat?.conversationName?.slice(0, 2).toUpperCase()}
+                    initials={getInitials(chat?.conversationName)}
                     size="sm"
                 />
                 <div className="min-w-0">

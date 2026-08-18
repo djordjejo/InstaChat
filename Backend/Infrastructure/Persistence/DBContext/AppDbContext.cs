@@ -89,11 +89,38 @@ namespace Infrastructure.Persistence.DBContext
                 .Property(m => m.Content)
                 .HasMaxLength(2000);
 
+            // Bez HasMaxLength kolona postaje nvarchar(max): SQL Server je ne
+            // moze indeksirati i cuva je van reda podataka. 100 se poklapa sa
+            // pravilom iz CreateConversationQueryValidator-a.
+            modelBuilder.Entity<Conversation>()
+                .Property(c => c.Name)
+                .HasMaxLength(100);
+
+            modelBuilder.Entity<User>()
+                .Property(u => u.AvatarUrl)
+                .HasMaxLength(500);
+
             // ---------- Indeksi ----------
 
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Email)
                 .IsUnique();
+
+            // Username se u UI-ju prikazuje kao identitet korisnika. Bez unique
+            // indeksa dva naloga mogu nositi isto ime - a mi smo bas zbog toga
+            // presli na poredjenje po userId umesto po imenu.
+            //
+            // PAZNJA: migracija PADA ako u bazi vec postoje duplikati.
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Username)
+                .IsUnique();
+
+            // Poruke se uvek citaju po razgovoru i sortiraju po vremenu
+            // (GetConversationAsync: Where(ConversationId) + OrderBy(SentAt)).
+            // Kompozitni indeks pokriva oba uslova jednim seek-om; bez njega je
+            // to skeniranje cele tabele poruka.
+            modelBuilder.Entity<Message>()
+                .HasIndex(m => new { m.ConversationId, m.SentAt });
         }
     }
 }

@@ -1,4 +1,5 @@
 import { formatTime } from "../../../utility/formatTime";
+import { getInitials } from "../../../utility/getInitials";
 
 export default function MessageBubble({ message, isMyMessage, showMeta }) {
     return (
@@ -13,7 +14,7 @@ export default function MessageBubble({ message, isMyMessage, showMeta }) {
             <div className="w-8 shrink-0">
                 {showMeta && (
                     <div className="flex h-8 w-8 items-center justify-center rounded-[9px] bg-blue-100 text-[10px] font-semibold text-blue-700">
-                        {message.senderUsername?.slice(0, 2).toUpperCase()}
+                        {getInitials(message.senderUsername)}
                     </div>
                 )}
             </div>

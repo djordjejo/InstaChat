@@ -1,10 +1,13 @@
 import Avatar from "../../common/Avatar";
+import { getInitials } from "../../../utility/getInitials";
 
 export default function ActiveUsersList({ users, onlineIds, onCreateChat }) {
     
+    const isUserOnline = (userId) => onlineIds?.has(userId?.toLowerCase()) ?? false;
+
     const sorted = [...users].sort((a, b) => {
-        const aOnline = onlineIds.has(a.userId?.toLowerCase());
-        const bOnline = onlineIds.has(b.userId?.toLowerCase());
+        const aOnline = isUserOnline(a.userId);
+        const bOnline = isUserOnline(b.userId);
 
         // Online prvi, pa abecedno unutar svake grupe.
         if (aOnline !== bOnline) return aOnline ? -1 : 1;
@@ -28,7 +31,7 @@ export default function ActiveUsersList({ users, onlineIds, onCreateChat }) {
             ) : (
                 <div className="flex flex-col gap-0.5">
                     {sorted.map((u) => {
-                        const isOnline = onlineIds.has(u.userId?.toLowerCase());
+                        const online = isUserOnline(u.userId);
 
                         return (
                             <button
@@ -37,14 +40,11 @@ export default function ActiveUsersList({ users, onlineIds, onCreateChat }) {
                                 className="flex w-full items-center gap-3 rounded-[10px] px-2.5 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-500 motion-reduce:transition-none"
                             >
                                 <span className="relative">
-                                    <Avatar
-                                        initials={u.username?.slice(0, 2).toUpperCase()}
-                                        size="sm"
-                                    />
+                                    <Avatar initials={getInitials(u.username)} size="sm" />
                                     <span
                                         className={
                                             "absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white " +
-                                            (isOnline ? "bg-emerald-500" : "bg-slate-300")
+                                            (online ? "bg-emerald-500" : "bg-slate-300")
                                         }
                                     />
                                 </span>
@@ -55,10 +55,10 @@ export default function ActiveUsersList({ users, onlineIds, onCreateChat }) {
                                     <span
                                         className={
                                             "block text-xs " +
-                                            (isOnline ? "text-emerald-600" : "text-slate-400")
+                                            (online ? "text-emerald-600" : "text-slate-400")
                                         }
                                     >
-                                        {isOnline ? "Online" : "Offline"}
+                                        {online ? "Online" : "Offline"}
                                     </span>
                                 </span>
                             </button>

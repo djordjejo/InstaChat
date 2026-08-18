@@ -17,6 +17,7 @@ import WelcomeScreen from "../components/Chat/WelcomeScreen";
 import ChatHeader from "../components/Chat/ChatView/ChatHeader";
 import MessagesList from "../components/Chat/ChatView/MessagesList";
 import MessageInput from "../components/Chat/ChatView/MessageInput";
+import { getInitials } from "../utility/getInitials";
 
 const appendMessage = (list, message) =>
     list.some((m) => m.messageId === message.messageId) ? list : [...list, message];
@@ -45,7 +46,7 @@ export default function Chat() {
     const onlineIds = new Set(
         otherOnlineUsers.map((u) => u.userId?.toLowerCase()).filter(Boolean)
     );
-    const initials = user?.username?.slice(0, 2).toUpperCase();
+    const initials = getInitials(user?.username);
 
     // Puna lista korisnika iz baze. Prisutnost i dalje stize preko SignalR-a -
     // ova lista samo obezbedjuje da se offline korisnici uopste vide.

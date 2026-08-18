@@ -1,7 +1,11 @@
 import axios from "axios";
 
+// Bez fallback-a bi greska bila tiha: baseURL "undefined/api" i svaki poziv
+// puca sa neinformativnim "Network Error".
+const API_URL = import.meta.env.VITE_API_URL ?? "https://localhost:5001";
+
 const axiosInstance = axios.create({
-    baseURL: "https://localhost:5001/api",
+    baseURL: `${API_URL}/api`,
 });
 
 axiosInstance.interceptors.request.use((config) => {

@@ -23,3 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 .vite/
+
+# Lokalna odstupanja od .env (port, host). .env je u repou namerno.
+.env.local
+.env.*.local

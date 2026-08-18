@@ -1,4 +1,5 @@
 import Avatar from "../../common/Avatar";
+import { getInitials } from "../../../utility/getInitials";
 
 export default function ChatsList({ chats, activeChatId, onChatSelect, unreadMessages }) {
     const heading = (
@@ -43,7 +44,7 @@ export default function ChatsList({ chats, activeChatId, onChatSelect, unreadMes
                             }
                         >
                             <Avatar
-                                initials={c.conversationName?.slice(0, 2).toUpperCase()}
+                                initials={getInitials(c.conversationName)}
                                 size="sm"
                             />
                             <span className="min-w-0 flex-1">

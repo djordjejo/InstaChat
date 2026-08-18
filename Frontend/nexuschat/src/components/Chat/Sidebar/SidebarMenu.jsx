@@ -31,7 +31,7 @@ export default function SidebarMenu({ sidebarView, setSidebarView, onlineCount }
                         <path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
                         <path d="M16 3.13a4 4 0 0 1 0 7.75M21 21v-2a4 4 0 0 0-3-3.85" />
                     </svg>
-                    Aktivni korisnici
+                    Korisnici
                     {onlineCount > 0 && (
                         <span className="ml-auto rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
                             {onlineCount}

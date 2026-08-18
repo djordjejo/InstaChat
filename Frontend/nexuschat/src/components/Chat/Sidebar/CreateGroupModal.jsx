@@ -1,10 +1,13 @@
 import { useState } from "react";
 import Avatar from "../../common/Avatar";
+import { getInitials } from "../../../utility/getInitials";
 
 export default function CreateGroupModal({ users, onlineIds, onClose, onCreate }) {
     const [groupName, setGroupName] = useState("");
     const [selectedUserIds, setSelectedUserIds] = useState(new Set());
     const [submitting, setSubmitting] = useState(false);
+
+    const isUserOnline = (userId) => onlineIds?.has(userId?.toLowerCase()) ?? false;
 
     const toggleUser = (userId) => {
         setSelectedUserIds((prev) => {
@@ -67,7 +70,8 @@ export default function CreateGroupModal({ users, onlineIds, onClose, onCreate }
                     ) : (
                         users.map((u) => {
                             const isSelected = selectedUserIds.has(u.userId);
-                            const isOnline = onlineIds.has(u.userId?.toLowerCase());
+                            const online = isUserOnline(u.userId);
+
                             return (
                                 <button
                                     key={u.userId}
@@ -79,14 +83,11 @@ export default function CreateGroupModal({ users, onlineIds, onClose, onCreate }
                                     }
                                 >
                                     <span className="relative">
-                                        <Avatar
-                                            initials={u.username?.slice(0, 2).toUpperCase()}
-                                            size="xs"
-                                        />
+                                        <Avatar initials={getInitials(u.username)} size="xs" />
                                         <span
                                             className={
                                                 "absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-white " +
-                                                (isOnline ? "bg-emerald-500" : "bg-slate-300")
+                                                (online ? "bg-emerald-500" : "bg-slate-300")
                                             }
                                         />
                                     </span>
