@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import axiosInstance from "../api/axiosInstance";
+import { getErrorMessage } from "../utility/getErrorMessage";
 import loginBg from "../assets/Login-bg.jpg";
 
 export default function LogIn() {
@@ -31,11 +32,7 @@ export default function LogIn() {
             login(data.token);
             navigate("/", { replace: true });
         } catch (err) {
-           setError(
-            err.response?.data?.detail ||
-            err.response?.data?.title ||
-            "Prijava nije uspela. Proveri podatke."
-        );
+            setError(getErrorMessage(err, "Prijava nije uspela. Proveri podatke."));
         } finally {
             setLoading(false);
         }

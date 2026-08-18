@@ -1,5 +1,6 @@
 using API.Hubs;
 using API.Services;
+using Application.Common;
 using Application.Interfaces;
 using Application.Users.Commands.Register;
 using Domain.Interfaces;
@@ -72,6 +73,10 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(RegisterCommand).Assembly));
+
+// Validatori + ValidationBehavior u MediatR pipeline-u. Mora POSLE AddMediatR,
+// jer se behavior kaci na vec registrovan pipeline.
+builder.Services.AddApplicationValidation();
 
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IJWTService, JWTService>();

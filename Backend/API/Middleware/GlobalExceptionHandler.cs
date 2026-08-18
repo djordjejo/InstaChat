@@ -1,4 +1,4 @@
-﻿using Application.Common.Exceptions;
+using Application.Common.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,6 +18,29 @@ namespace API.Middleware
             Exception exception,
             CancellationToken cancellationToken)
         {
+            // ValidationException se obradjuje odvojeno jer nosi mapu gresaka po
+            // polju, pa ide kao ValidationProblemDetails - standardni oblik koji
+            // klijent moze da mapira na pojedinacna polja forme.
+            if (exception is ValidationException validationException)
+            {
+                _logger.LogWarning(
+                    "Validacija nije prosla na {Path}: {Count} polja",
+                    context.Request.Path, validationException.Errors.Count);
+
+                var validationProblem = new ValidationProblemDetails(
+                    validationException.Errors.ToDictionary(e => e.Key, e => e.Value))
+                {
+                    Status = StatusCodes.Status400BadRequest,
+                    Title = "Uneti podaci nisu ispravni",
+                    Instance = context.Request.Path
+                };
+
+                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                await context.Response.WriteAsJsonAsync(validationProblem, cancellationToken);
+
+                return true;
+            }
+
             var (status, title) = exception switch
             {
                 NotFoundException => (StatusCodes.Status404NotFound, "Nije pronađeno"),

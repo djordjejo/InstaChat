@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axiosInstance from "../api/axiosInstance";
+import { getErrorMessage } from "../utility/getErrorMessage";
 import signInBg from "../assets/SignIn-bg.jpg";
 
 export default function Register() {
@@ -51,13 +52,7 @@ export default function Register() {
             // response.data moze biti string, objekat sa .message, ili ProblemDetails
             // (koji koristi .detail). Bez ovog svodjenja React baca
             // "Objects are not valid as a React child".
-            const payload = err.response?.data;
-            const message =
-                typeof payload === "string"
-                    ? payload
-                    : payload?.detail ?? payload?.title ?? payload?.message ?? null;
-
-            setError(message || "Registracija nije uspela. Pokusaj ponovo.");
+setError(getErrorMessage(err, "Registracija nije uspela. Pokušaj ponovo."));
         } finally {
             setLoading(false);
         }
