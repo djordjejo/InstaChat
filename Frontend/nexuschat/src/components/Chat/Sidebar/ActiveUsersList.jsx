@@ -1,9 +1,7 @@
 import Avatar from "../../common/Avatar";
 
 export default function ActiveUsersList({ users, onlineIds, onCreateChat }) {
-    // Lista je puna (svi korisnici iz baze), a prisutnost dolazi uzivo preko
-    // SignalR-a. Ranije je lista BILA prisutnost, pa se offline korisnik nije
-    // mogao ni videti ni kontaktirati.
+    
     const sorted = [...users].sort((a, b) => {
         const aOnline = onlineIds.has(a.userId?.toLowerCase());
         const bOnline = onlineIds.has(b.userId?.toLowerCase());

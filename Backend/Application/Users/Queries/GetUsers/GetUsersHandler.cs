@@ -15,8 +15,7 @@ namespace Application.Users.Queries.GetUsers
 
         public async Task<List<UserDto>> Handle(GetUsersQuery query, CancellationToken cancellationToken)
         {
-            // Pozivalac se iskljucuje na nivou upita, ne filtriranjem u memoriji -
-            // nema smisla dovlaciti red pa ga odbaciti.
+        
             var users = await _unitOfWork.Users.GetAllExceptAsync(query.CurrentUserId);
 
             return users.Select(u => new UserDto

@@ -18,10 +18,6 @@ import ChatHeader from "../components/Chat/ChatView/ChatHeader";
 import MessagesList from "../components/Chat/ChatView/MessagesList";
 import MessageInput from "../components/Chat/ChatView/MessageInput";
 
-// Ista poruka moze stici dva puta: jednom kao HTTP odgovor na slanje, jednom
-// preko SignalR-a. Dodavanje se zato radi kroz ovu funkciju, koja poredi po
-// messageId i vraca ISTU referencu kad nema sta da se doda - pa React
-// preskace nepotreban re-render.
 const appendMessage = (list, message) =>
     list.some((m) => m.messageId === message.messageId) ? list : [...list, message];
 
