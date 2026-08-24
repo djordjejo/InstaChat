@@ -38,6 +38,8 @@ namespace Infrastructure.Persistence.Repository
                     .Where(m => m.IsDeleted != true)
                     .OrderBy(m => m.SentAt))
                         .ThenInclude(m => m.Sender)
+                .Include(x => x.Messages)
+                    .ThenInclude(m => m.Attachments)
                 .Include(x => x.Members)
                     .ThenInclude(x => x.User)
                 .FirstOrDefaultAsync(x => x.Id == conversationId);

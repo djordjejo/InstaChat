@@ -1,4 +1,5 @@
 import { formatTime } from "../../../utility/formatTime";
+import AttachmentImage from "./AttachmentImage";
 import { getInitials } from "../../../utility/getInitials";
 
 export default function MessageBubble({ message, isMyMessage, showMeta }) {
@@ -31,6 +32,16 @@ export default function MessageBubble({ message, isMyMessage, showMeta }) {
                     </p>
                 )}
 
+                {/* Prilozi idu IZNAD teksta - slika je glavni sadrzaj, opis je uz nju. */}
+                {message.attachments?.length > 0 && (
+                    <div className="mb-1 flex flex-col gap-1.5">
+                        {message.attachments.map((a) => (
+                            <AttachmentImage key={a.attachmentId} attachment={a} />
+                        ))}
+                    </div>
+                )}
+
+                {message.content && (
                 <div
                     className={
                         "whitespace-pre-wrap break-words px-3.5 py-2 text-sm leading-relaxed " +
@@ -41,6 +52,7 @@ export default function MessageBubble({ message, isMyMessage, showMeta }) {
                 >
                     {message.content}
                 </div>
+                )}
 
                 <p className="mt-1 px-1 text-[10px] tabular-nums text-slate-400">
                     {formatTime(message.sentAt)}

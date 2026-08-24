@@ -43,7 +43,15 @@ namespace Application.Conversations.Queries.GetChats
                     SentAt = DateTime.SpecifyKind(x.SentAt, DateTimeKind.Utc),
                     SenderUsername = x.Sender.Username,
                     IsEdited = x.IsEdited ?? false,
-                    Attachments = new List<AttachmentDto>()
+                    Attachments = x.Attachments.Select(a => new AttachmentDto
+                    {
+                        AttachmentId = a.Id,
+                        FileName = a.FileName,
+                        FileUrl = $"/attachment/{a.Id}",
+                        FileSize = a.FileSize,
+                        ContentType = a.ContentType,
+                        UploadedAt = a.UploadedAt
+                    }).ToList()
                 }).ToList(),
                 Members = conversation.Members.Select(x => new MemberDto
                 {

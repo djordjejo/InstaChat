@@ -1,4 +1,5 @@
-﻿using Application.Messages.Command;
+using Application.Common;
+using Application.Messages.Command;
 using Application.Messages.Handler;
 using Domain.Entities;
 using MediatR;
@@ -35,6 +36,42 @@ namespace API.Controllers
 
             return Ok(result);
         }
+        /// <summary>
+        /// Slanje slike. Multipart, pa [FromForm]. Kontroler procita stream u
+        /// bajtove i preda obican UploadedFile - IFormFile ne sme dalje od ovog
+        /// sloja, jer bi Application zavisio od ASP.NET-a.
+        /// </summary>
+        [HttpPost("send-image")]
+        [RequestSizeLimit(6 * 1024 * 1024)]
+        public async Task<IActionResult> SendImage(
+            [FromForm] Guid conversationId,
+            [FromForm] string? content,
+            IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(new ProblemDetails { Title = "Fajl nije poslat." });
+
+            var senderId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+            using var memory = new MemoryStream();
+            await file.CopyToAsync(memory);
+
+            var result = await _mediator.Send(new SendImageMessageCommand
+            {
+                SenderId = senderId,
+                ConversationId = conversationId,
+                Content = content,
+                File = new UploadedFile
+                {
+                    FileName = file.FileName,
+                    ContentType = file.ContentType,
+                    Content = memory.ToArray()
+                }
+            });
+
+            return Ok(result);
+        }
+
         [HttpPut("edit/{messageId}")]
         public async Task<IActionResult> EditMessage(Guid messageId,
             EditMessageCommand command)

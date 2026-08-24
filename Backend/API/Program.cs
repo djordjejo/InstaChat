@@ -6,6 +6,7 @@ using Application.Users.Commands.Register;
 using Domain.Interfaces;
 using Infrastructure.Persistence.DBContext;
 using Infrastructure.Persistence.Repository;
+using Infrastructure.Storage;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -82,6 +83,15 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IJWTService, JWTService>();
 builder.Services.AddScoped<IChatNotificationService, ChatNotificationService>();
 builder.Services.AddSingleton<IOnlineUserTracker, OnlineUserTracker>();
+
+// Folder za priloge se resava u odnosu na ContentRootPath i drzi IZVAN
+// wwwroot-a - fajlovi se serviraju iskljucivo kroz AttachmentController,
+// koji proverava clanstvo u razgovoru.
+var attachmentsPath = Path.Combine(
+    builder.Environment.ContentRootPath,
+    builder.Configuration["Storage:AttachmentsPath"] ?? "Storage/attachments");
+
+builder.Services.AddSingleton<IFileStorage>(new LocalFileStorage(attachmentsPath));
 
 var app = builder.Build();
 app.UseExceptionHandler();

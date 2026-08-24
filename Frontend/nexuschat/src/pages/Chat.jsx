@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { createChat, getChats, viewChat, deleteChat } from "../api/chatsApi";
-import { sendMessage } from "../api/messageApi";
+import { sendMessage, sendImageMessage } from "../api/messageApi";
 import { getUsers } from "../api/userApi";
 import { useSignalRConnection } from "../hooks/useSignalRConnection";
 import { useOnlineUsers } from "../hooks/useOnlineUsers";
@@ -17,6 +17,7 @@ import WelcomeScreen from "../components/Chat/WelcomeScreen";
 import ChatHeader from "../components/Chat/ChatView/ChatHeader";
 import MessagesList from "../components/Chat/ChatView/MessagesList";
 import MessageInput from "../components/Chat/ChatView/MessageInput";
+import AttachImageModal from "../components/Chat/ChatView/AttachImageModal";
 import { getInitials } from "../utility/getInitials";
 
 const appendMessage = (list, message) =>
@@ -33,6 +34,7 @@ export default function Chat() {
     const [activeChatId, setActiveChatId] = useState(null);
     const [sidebarView, setSidebarView] = useState("chats");
     const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+    const [showAttachModal, setShowAttachModal] = useState(false);
 
     const [messages, setMessages] = useState([]);
     const [messageTxt, setMessageTxt] = useState("");
@@ -156,6 +158,18 @@ export default function Chat() {
             console.error("Slanje nije uspelo:", err);
             setMessageTxt(text);
         }
+    };
+
+    const handleSendImage = async (file, caption) => {
+        // Isti obrazac kao kod teksta: poruku prikazujemo iz HTTP odgovora, a
+        // appendMessage odbacuje duplikat ako ista stigne i preko SignalR-a.
+        const sent = await sendImageMessage(activeChatId, file, caption);
+
+        if (sent) {
+            setMessages((prev) => appendMessage(prev, sent));
+        }
+
+        setShowAttachModal(false);
     };
 
     useEffect(() => {
@@ -418,8 +432,16 @@ export default function Chat() {
                         value={messageTxt}
                         onChange={setMessageTxt}
                         onSend={handleSendMessage}
+                        onAttach={() => setShowAttachModal(true)}
                     />
                 </main>
+            )}
+
+            {showAttachModal && (
+                <AttachImageModal
+                    onClose={() => setShowAttachModal(false)}
+                    onSend={handleSendImage}
+                />
             )}
 
             {showCreateGroupModal && (

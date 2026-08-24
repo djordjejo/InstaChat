@@ -22,6 +22,7 @@ namespace Application.Common
             services.AddScoped<IValidator<RegisterCommand>, RegisterCommandValidator>();
             services.AddScoped<IValidator<LoginQuery>, LoginQueryValidator>();
             services.AddScoped<IValidator<SendMessageCommand>, SendMessageCommandValidator>();
+            services.AddScoped<IValidator<SendImageMessageCommand>, SendImageMessageCommandValidator>();
             services.AddScoped<IValidator<EditMessageCommand>, EditMessageCommandValidator>();
             services.AddScoped<IValidator<CreateConversationQuery>, CreateConversationQueryValidator>();
 
