@@ -42,5 +42,18 @@ namespace Infrastructure.Storage
 
             return new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
         }
+
+        public void Delete(string storedFileName)
+        {
+            if (string.IsNullOrWhiteSpace(storedFileName)) return;
+
+            var safeName = Path.GetFileName(storedFileName);
+            var fullPath = Path.Combine(_rootPath, safeName);
+
+            // Bez provere File.Exists brisanje vec obrisanog fajla baca izuzetak
+            // i obara poziv koji je inace prosao.
+            if (File.Exists(fullPath))
+                File.Delete(fullPath);
+        }
     }
 }

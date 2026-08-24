@@ -26,6 +26,7 @@ namespace Application.Conversations.Queries.GetChats
             {
                 ConversationId = x.Id,
                 ConversationName = x.DisplayNameFor(query.UserId),
+                AvatarUrl = x.AvatarUrlFor(query.UserId),
                 IsGroup = x.IsGroup,
                 Members = x.Members.Select(member => new MemberDto
                 {
@@ -33,6 +34,7 @@ namespace Application.Conversations.Queries.GetChats
                     Name = member.User.Username,
                     Role = member.Role,
                     IsOnline = member.User.IsOnline,
+                    AvatarUrl = AvatarUrls.For(member.UserId, member.User.AvatarUrl),
                 }).ToList()
             }).ToList();
         }

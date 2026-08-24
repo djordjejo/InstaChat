@@ -32,6 +32,7 @@ namespace Application.Conversations.Queries.GetChats
             {
                 ConversationId = conversation.Id,
                 ConversationName = conversation.DisplayNameFor(query.CurrentUserId),
+                AvatarUrl = conversation.AvatarUrlFor(query.CurrentUserId),
                 IsGroup = conversation.IsGroup,
                 CreatedAt = conversation.CreatedAt,
                 Messages = conversation.Messages.Select(x => new MessageDto
@@ -58,7 +59,8 @@ namespace Application.Conversations.Queries.GetChats
                     UserId = x.UserId,
                     Role = x.Role,
                     Name = x.User.Username,
-                    IsOnline = x.User.IsOnline
+                    IsOnline = x.User.IsOnline,
+                    AvatarUrl = AvatarUrls.For(x.UserId, x.User.AvatarUrl)
                 }).ToList(),
             };
         }

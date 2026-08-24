@@ -3,7 +3,7 @@ import MessageBubble from "./MessageBubble";
 import { useAuth } from "../../../context/AuthContext";
 import { formatDayLabel, isSameDay } from "../../../utility/formatTime";
 
-export default function MessagesList({ messages }) {
+export default function MessagesList({ messages, memberAvatars }) {
     const { user } = useAuth();
     const messagesEndRef = useRef(null);
 
@@ -60,6 +60,7 @@ export default function MessagesList({ messages }) {
                                 message={message}
                                 isMyMessage={isMyMessage}
                                 showMeta={showMeta}
+                                avatarUrl={memberAvatars?.get(message.senderId?.toLowerCase()) ?? null}
                             />
                         </div>
                     </div>

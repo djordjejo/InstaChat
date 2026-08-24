@@ -8,7 +8,7 @@ namespace Application.Common
         public const long MaxBytes = 5 * 1024 * 1024;   // 5 MB
 
         /// <summary>
-        /// Belа lista tipova i ekstenzija. Ekstenzija se uzima ODAVDE, nikad iz
+        /// Bela lista tipova i ekstenzija. Ekstenzija se uzima ODAVDE, nikad iz
         /// imena fajla koje je poslao klijent - time otpadaju i "..\..\web.config"
         /// i trikovi tipa "slika.png.exe".
         /// </summary>
@@ -25,6 +25,24 @@ namespace Application.Common
             contentType is not null && AllowedTypes.ContainsKey(contentType);
 
         public static string ExtensionFor(string contentType) => AllowedTypes[contentType];
+
+        /// <summary>
+        /// Obrnut smer: iz ekstenzije sacuvanog fajla natrag u content type.
+        /// Kod priloga to nije trebalo (tip se cuva u bazi uz prilog), ali za
+        /// avatar se pamti samo ime fajla, pa se tip izvodi iz ekstenzije.
+        /// </summary>
+        public static string ContentTypeFor(string extension)
+        {
+            foreach (var pair in AllowedTypes)
+            {
+                if (string.Equals(pair.Value, extension, StringComparison.OrdinalIgnoreCase))
+                    return pair.Key;
+            }
+
+            // Nedostizno dok su u bazi samo ekstenzije koje smo mi upisali;
+            // stoji da funkcija nikad ne vrati null.
+            return "application/octet-stream";
+        }
 
         /// <summary>
         /// Provera POTPISA fajla (magic bytes). Content-Type zaglavlje postavlja

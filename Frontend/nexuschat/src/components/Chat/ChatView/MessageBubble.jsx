@@ -1,8 +1,9 @@
 import { formatTime } from "../../../utility/formatTime";
 import AttachmentImage from "./AttachmentImage";
 import { getInitials } from "../../../utility/getInitials";
+import Avatar from "../../common/Avatar";
 
-export default function MessageBubble({ message, isMyMessage, showMeta }) {
+export default function MessageBubble({ message, isMyMessage, showMeta, avatarUrl }) {
     return (
         <div
             className={
@@ -12,11 +13,13 @@ export default function MessageBubble({ message, isMyMessage, showMeta }) {
         >
             {/* Kod uzastopnih poruka istog posiljaoca avatar se ne ponavlja,
                 ali prostor ostaje zauzet da se baloncici ne pomeraju. */}
-            <div className="w-8 shrink-0">
+            <div className="w-9 shrink-0">
                 {showMeta && (
-                    <div className="flex h-8 w-8 items-center justify-center rounded-[9px] bg-blue-100 text-[10px] font-semibold text-blue-700">
-                        {getInitials(message.senderUsername)}
-                    </div>
+                    <Avatar
+                        initials={getInitials(message.senderUsername)}
+                        size="sm"
+                        avatarUrl={avatarUrl}
+                    />
                 )}
             </div>
 

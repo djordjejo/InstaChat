@@ -12,5 +12,12 @@ namespace Application.Interfaces
 
         /// <summary>Stream za citanje, ili null ako fajl ne postoji.</summary>
         Stream? Open(string storedFileName);
+
+        /// <summary>
+        /// Brise fajl ako postoji. Potrebno kod avatara: svaka nova slika dobija
+        /// novo ime, pa bi bez ovoga stara zauvek ostala na disku.
+        /// Nepostojeci fajl NIJE greska - poziv je idempotentan.
+        /// </summary>
+        void Delete(string storedFileName);
     }
 }

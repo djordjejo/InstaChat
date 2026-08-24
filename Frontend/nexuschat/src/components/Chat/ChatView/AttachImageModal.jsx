@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-
-const MAX_BYTES = 5 * 1024 * 1024;
-const ALLOWED = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+import { ALLOWED_IMAGE_TYPES, validateImage } from "../../../utility/imageRules";
 
 export default function AttachImageModal({ onClose, onSend }) {
     const [file, setFile] = useState(null);
@@ -11,19 +9,14 @@ export default function AttachImageModal({ onClose, onSend }) {
     const [sending, setSending] = useState(false);
     const inputRef = useRef(null);
 
-    // Isti limiti kao na backendu. Ovo je samo udobnost za korisnika - prava
-    // provera je na serveru, jer klijentu se nikad ne veruje.
     const pickFile = (selected) => {
         setError("");
 
         if (!selected) return;
 
-        if (!ALLOWED.includes(selected.type)) {
-            setError("Dozvoljene su samo slike: JPG, PNG, GIF, WEBP.");
-            return;
-        }
-        if (selected.size > MAX_BYTES) {
-            setError("Slika može biti najviše 5 MB.");
+        const problem = validateImage(selected);
+        if (problem) {
+            setError(problem);
             return;
         }
 
@@ -74,7 +67,7 @@ export default function AttachImageModal({ onClose, onSend }) {
                 <input
                     ref={inputRef}
                     type="file"
-                    accept={ALLOWED.join(",")}
+                    accept={ALLOWED_IMAGE_TYPES.join(",")}
                     className="hidden"
                     onChange={(e) => pickFile(e.target.files?.[0])}
                 />

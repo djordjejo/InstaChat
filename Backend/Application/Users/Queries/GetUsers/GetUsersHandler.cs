@@ -1,3 +1,4 @@
+using Application.Common;
 using Application.DTO.User;
 using Domain.Interfaces;
 using MediatR;
@@ -22,7 +23,7 @@ namespace Application.Users.Queries.GetUsers
             {
                 UserId = u.Id,
                 Username = u.Username,
-                AvatarUrl = u.AvatarUrl,
+                AvatarUrl = AvatarUrls.For(u.Id, u.AvatarUrl),
                 IsOnline = u.IsOnline,
                 LastSeen = u.LastSeen
             }).ToList();

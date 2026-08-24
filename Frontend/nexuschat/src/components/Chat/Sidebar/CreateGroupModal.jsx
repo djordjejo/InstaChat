@@ -83,7 +83,7 @@ export default function CreateGroupModal({ users, onlineIds, onClose, onCreate }
                                     }
                                 >
                                     <span className="relative">
-                                        <Avatar initials={getInitials(u.username)} size="xs" />
+                                        <Avatar initials={getInitials(u.username)} size="xs" avatarUrl={u.avatarUrl} />
                                         <span
                                             className={
                                                 "absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-white " +

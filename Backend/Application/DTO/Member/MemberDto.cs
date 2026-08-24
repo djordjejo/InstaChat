@@ -1,9 +1,4 @@
-﻿using Domain.EnumMember;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Domain.EnumMember;
 
 namespace Application.DTO.Member
 {
@@ -14,5 +9,7 @@ namespace Application.DTO.Member
         public MemberRole Role { get; set; } 
         public bool IsOnline { get; set; }
 
+        /// <summary>Adresa endpointa sa slikom, ili null ako je korisnik nema.</summary>
+        public string? AvatarUrl { get; set; }
     }
 }

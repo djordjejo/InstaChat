@@ -3,7 +3,8 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { createChat, getChats, viewChat, deleteChat } from "../api/chatsApi";
 import { sendMessage, sendImageMessage } from "../api/messageApi";
-import { getUsers } from "../api/userApi";
+import { getUsers, getCurrentUser } from "../api/userApi";
+import { forgetAvatar } from "../hooks/useAvatarObjectUrl";
 import { useSignalRConnection } from "../hooks/useSignalRConnection";
 import { useOnlineUsers } from "../hooks/useOnlineUsers";
 
@@ -29,6 +30,7 @@ export default function Chat() {
 
     const [chats, setChats] = useState([]);
     const [users, setUsers] = useState([]);
+    const [profile, setProfile] = useState(null);
     const [chat, setChat] = useState(null);
 
     const [activeChatId, setActiveChatId] = useState(null);
@@ -62,6 +64,19 @@ export default function Chat() {
             }
         };
         fetchUsers();
+    }, []);
+
+    // Sopstveni profil ide zasebno od liste korisnika: nju backend vraca BEZ
+    // pozivaoca, a avatar u zaglavlju je bas njegov.
+    useEffect(() => {
+        const fetchProfile = async () => {
+            try {
+                setProfile(await getCurrentUser());
+            } catch (err) {
+                console.error("Učitavanje profila nije uspelo:", err);
+            }
+        };
+        fetchProfile();
     }, []);
 
     useEffect(() => {
@@ -132,6 +147,13 @@ export default function Chat() {
             cancelled = true;
         };
     }, [activeChatId, connection]);
+
+    // Stara adresa avatara ostaje u kesu sa svojim objectURL-om; posle izmene
+    // se vise nikad ne trazi, pa je oslobadjamo odmah.
+    const handleAvatarChange = (updated) => {
+        forgetAvatar(profile?.avatarUrl);
+        setProfile(updated);
+    };
 
     const handleLogout = () => {
         logout();
@@ -250,6 +272,19 @@ export default function Chat() {
         return () => connection.off("ConversationDeleted", handleConversationDeleted);
     }, [connection]);
 
+    // Avatar posiljaoca se cita iz clanova otvorenog razgovora - MessageDto
+    // nosi samo ime, a i da nosi sliku, ona bi zastarela cim je posiljalac
+    // promeni (stare poruke se ne osvezavaju).
+    const memberAvatars = new Map(
+        (chat?.members ?? []).map((m) => [m.userId?.toLowerCase(), m.avatarUrl])
+    );
+
+    // Sopstvena slika ide iz profila: on se azurira odmah po izmeni, dok
+    // "chat.members" nosi vrednost od trenutka otvaranja razgovora.
+    if (profile && user?.userId) {
+        memberAvatars.set(user.userId.toLowerCase(), profile.avatarUrl ?? null);
+    }
+
     const peer = chat?.members?.find((m) => m.userId !== user?.userId);
     const onlineUser = otherOnlineUsers.find((u) => u.userId === peer?.userId);
 
@@ -322,7 +357,7 @@ export default function Chat() {
                 }
             >
                 <div className="flex items-center gap-3 border-b border-slate-200 px-5 py-4">
-                    <Avatar initials={initials} size="sm" />
+                    <Avatar initials={initials} size="sm" avatarUrl={profile?.avatarUrl} />
                     <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold text-slate-900">
                             {user?.username}
@@ -368,7 +403,12 @@ export default function Chat() {
                         />
                     )}
                     {sidebarView === "profile" && (
-                        <ProfilePanel initials={initials} onLogout={handleLogout} />
+                        <ProfilePanel
+                            initials={initials}
+                            avatarUrl={profile?.avatarUrl}
+                            onAvatarChange={handleAvatarChange}
+                            onLogout={handleLogout}
+                        />
                     )}
                 </div>
 
@@ -427,7 +467,7 @@ export default function Chat() {
                         isPeerOnline={Boolean(onlineUser)}
                         onDeleteChat={handleDeleteChat}
                     />
-                    <MessagesList messages={messages} />
+                    <MessagesList messages={messages} memberAvatars={memberAvatars} />
                     <MessageInput
                         value={messageTxt}
                         onChange={setMessageTxt}

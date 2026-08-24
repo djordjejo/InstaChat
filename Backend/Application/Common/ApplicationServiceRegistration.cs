@@ -3,6 +3,7 @@ using Application.Conversations.Commands.CreateChat;
 using Application.Messages.Command;
 using Application.Users.Commands.Queries.LogIn;
 using Application.Users.Commands.Register;
+using Application.Users.Commands.UploadAvatar;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,6 +26,7 @@ namespace Application.Common
             services.AddScoped<IValidator<SendImageMessageCommand>, SendImageMessageCommandValidator>();
             services.AddScoped<IValidator<EditMessageCommand>, EditMessageCommandValidator>();
             services.AddScoped<IValidator<CreateConversationQuery>, CreateConversationQueryValidator>();
+            services.AddScoped<IValidator<UploadAvatarCommand>, UploadAvatarCommandValidator>();
 
             // Otvoreni generik: MediatR ga zatvori za svaki par (TRequest, TResponse).
             services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));

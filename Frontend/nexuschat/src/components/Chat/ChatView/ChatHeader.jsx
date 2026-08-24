@@ -44,6 +44,7 @@ export default function ChatHeader({ chat, isPeerOnline, onDeleteChat }) {
             <div className="flex min-w-0 items-center gap-3">
                 <Avatar
                     initials={getInitials(chat?.conversationName)}
+                    avatarUrl={chat?.avatarUrl}
                     size="sm"
                 />
                 <div className="min-w-0">
