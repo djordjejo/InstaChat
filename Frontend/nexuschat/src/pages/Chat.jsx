@@ -1,8 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { createChat, getChats, viewChat, deleteChat } from "../api/chatsApi";
-import { sendMessage, sendImageMessage } from "../api/messageApi";
+import {
+    sendMessage,
+    sendImageMessage,
+    editMessage,
+    deleteMessage,
+} from "../api/messageApi";
 import { getUsers, getCurrentUser } from "../api/userApi";
 import { forgetAvatar } from "../hooks/useAvatarObjectUrl";
 import { useSignalRConnection } from "../hooks/useSignalRConnection";
@@ -18,11 +23,31 @@ import WelcomeScreen from "../components/Chat/WelcomeScreen";
 import ChatHeader from "../components/Chat/ChatView/ChatHeader";
 import MessagesList from "../components/Chat/ChatView/MessagesList";
 import MessageInput from "../components/Chat/ChatView/MessageInput";
+import TypingIndicator from "../components/Chat/ChatView/TypingIndicator";
 import AttachImageModal from "../components/Chat/ChatView/AttachImageModal";
 import { getInitials } from "../utility/getInitials";
 
 const appendMessage = (list, message) =>
     list.some((m) => m.messageId === message.messageId) ? list : [...list, message];
+
+// Izmena stize BEZ priloga - backend ih ne ucitava jer ih izmena ne dira.
+// Zato se preuzimaju samo sadrzaj i oznaka izmene, a lista priloga se cuva.
+const replaceMessage = (list, updated) =>
+    list.map((m) =>
+        m.messageId === updated.messageId
+            ? { ...m, content: updated.content, isEdited: updated.isEdited }
+            : m
+    );
+
+const removeMessage = (list, messageId) =>
+    list.filter((m) => m.messageId !== messageId);
+
+// Koliko dugo posle poslednjeg pritiska tastera se jos smatra da korisnik kuca.
+const TYPING_IDLE_MS = 2000;
+
+// Osigurac na strani primaoca: ako "StopTyping" nikad ne stigne - tab zatvoren
+// usred kucanja, veza pukla - indikator bi inace ostao zauvek.
+const TYPING_STALE_MS = 6000;
 
 export default function Chat() {
     const { user, logout } = useAuth();
@@ -41,6 +66,17 @@ export default function Chat() {
     const [messages, setMessages] = useState([]);
     const [messageTxt, setMessageTxt] = useState("");
     const [unreadMessages, setUnreadMessages] = useState(new Map());
+
+    // Uz mapu "userId -> korisnicko ime" pamti se i razgovor na koji se odnosi.
+    // Zahvaljujuci tome, prelazak na drugi razgovor ne trazi ciscenje stanja:
+    // indikator se prosto ne prikazuje kad se chatId ne poklapa sa otvorenim.
+    const [typing, setTyping] = useState({ chatId: null, users: new Map() });
+
+    // Ref, ne state: menja se pri svakom pritisku tastera, a nista se od njega
+    // ne iscrtava - state bi ovde znacio ponovni render po slovu.
+    const typingIdleRef = useRef(null);
+    const typingSentRef = useRef(false);
+    const typingStaleRef = useRef(new Map());
 
     const connection = useSignalRConnection();
     const { otherOnlineUsers } = useOnlineUsers(connection, user);
@@ -194,6 +230,115 @@ export default function Chat() {
         setShowAttachModal(false);
     };
 
+    // Izmena i brisanje se NE primenjuju lokalno: obe operacije backend emituje
+    // svim clanovima grupe, pa se sopstveni prikaz azurira istim putem kao i
+    // tudji. Time nema dva mesta koja odrzavaju isto stanje.
+    const handleEditMessage = async (messageId, content) => {
+        await editMessage(messageId, content);
+    };
+
+    const handleDeleteMessage = async (messageId) => {
+        await deleteMessage(messageId);
+    };
+
+    // --- indikator kucanja: slanje ---
+
+    const stopTyping = () => {
+        clearTimeout(typingIdleRef.current);
+
+        // Bez ove zastite bi se "StopTyping" slao i kad se nikad nije ni javilo
+        // da korisnik kuca - npr. na svaki izlazak iz polja za unos.
+        if (!typingSentRef.current) return;
+
+        typingSentRef.current = false;
+        connection?.invoke("StopTyping", activeChatId).catch(() => {});
+    };
+
+    const notifyTyping = () => {
+        if (!connection || !activeChatId) return;
+
+        // "StartTyping" ide samo jednom po nizu kucanja, ne po slovu - inace bi
+        // svaki pritisak tastera bio jedan poziv cvorista.
+        if (!typingSentRef.current) {
+            typingSentRef.current = true;
+            connection.invoke("StartTyping", activeChatId).catch(() => {});
+        }
+
+        clearTimeout(typingIdleRef.current);
+        typingIdleRef.current = setTimeout(stopTyping, TYPING_IDLE_MS);
+    };
+
+    // --- indikator kucanja: prijem ---
+
+    useEffect(() => {
+        if (!connection) return;
+
+        const staleTimers = typingStaleRef.current;
+
+        const forget = (userId) => {
+            clearTimeout(staleTimers.get(userId));
+            staleTimers.delete(userId);
+
+            setTyping((prev) => {
+                if (!prev.users.has(userId)) return prev;
+                const users = new Map(prev.users);
+                users.delete(userId);
+                return { chatId: prev.chatId, users };
+            });
+        };
+
+        const handleUserTyping = (payload) => {
+            // Dogadjaj stize za svaku grupu u kojoj je konekcija clan; prikazuje
+            // se samo ako se odnosi na razgovor koji je trenutno otvoren.
+            if (payload?.conversationId !== activeChatId) return;
+
+            setTyping((prev) => {
+                // Zaostali unosi iz prethodnog razgovora se odbacuju umesto da
+                // se nadovezuju.
+                const users =
+                    prev.chatId === activeChatId ? new Map(prev.users) : new Map();
+
+                users.set(payload.userId, payload.userName);
+                return { chatId: activeChatId, users };
+            });
+
+            clearTimeout(staleTimers.get(payload.userId));
+            staleTimers.set(
+                payload.userId,
+                setTimeout(() => forget(payload.userId), TYPING_STALE_MS)
+            );
+        };
+
+        const handleUserStopTyping = (payload) => {
+            if (payload?.conversationId !== activeChatId) return;
+            forget(payload.userId);
+        };
+
+        connection.on("UserTyping", handleUserTyping);
+        connection.on("UserStopTyping", handleUserStopTyping);
+
+        return () => {
+            connection.off("UserTyping", handleUserTyping);
+            connection.off("UserStopTyping", handleUserStopTyping);
+        };
+    }, [connection, activeChatId]);
+
+    // Prelaskom na drugi razgovor sopstveno kucanje pocinje iznova - inace bi
+    // se "StartTyping" preskocio, jer zastavica jos stoji od prethodnog.
+    // Ovde se dira samo ref, bez postavljanja stanja: prikaz se ionako racuna
+    // poredjenjem typing.chatId sa otvorenim razgovorom.
+    useEffect(() => {
+        const staleTimers = typingStaleRef.current;
+
+        typingSentRef.current = false;
+        clearTimeout(typingIdleRef.current);
+
+        return () => {
+            staleTimers.forEach((timer) => clearTimeout(timer));
+            staleTimers.clear();
+        };
+    }, [activeChatId]);
+
     useEffect(() => {
         if (!connection) return;
 
@@ -214,6 +359,31 @@ export default function Chat() {
 
         connection.on("ReceiveMessage", handleNewMessage);
         return () => connection.off("ReceiveMessage", handleNewMessage);
+    }, [connection, activeChatId]);
+
+    // Izmena i brisanje poruke. Oba dogadjaja se odnose samo na otvoreni
+    // razgovor - poruke ostalih razgovora se ionako ne drze u stanju, pa ce
+    // izmenu pokupiti pri sledecem otvaranju.
+    useEffect(() => {
+        if (!connection) return;
+
+        const handleMessageUpdated = (message) => {
+            if (message.conversationId !== activeChatId) return;
+            setMessages((prev) => replaceMessage(prev, message));
+        };
+
+        const handleMessageDeleted = (payload) => {
+            if (payload?.conversationId !== activeChatId) return;
+            setMessages((prev) => removeMessage(prev, payload.messageId));
+        };
+
+        connection.on("MessageUpdated", handleMessageUpdated);
+        connection.on("MessageDeleted", handleMessageDeleted);
+
+        return () => {
+            connection.off("MessageUpdated", handleMessageUpdated);
+            connection.off("MessageDeleted", handleMessageDeleted);
+        };
     }, [connection, activeChatId]);
 
     // Drugi ucesnik ne zna da je razgovor nastao - njegova konekcija je usla u grupe
@@ -467,12 +637,26 @@ export default function Chat() {
                         isPeerOnline={Boolean(onlineUser)}
                         onDeleteChat={handleDeleteChat}
                     />
-                    <MessagesList messages={messages} memberAvatars={memberAvatars} />
+                    <MessagesList
+                        messages={messages}
+                        memberAvatars={memberAvatars}
+                        onEditMessage={handleEditMessage}
+                        onDeleteMessage={handleDeleteMessage}
+                    />
+                    <TypingIndicator
+                        names={
+                            typing.chatId === activeChatId
+                                ? Array.from(typing.users.values())
+                                : []
+                        }
+                    />
                     <MessageInput
                         value={messageTxt}
                         onChange={setMessageTxt}
                         onSend={handleSendMessage}
                         onAttach={() => setShowAttachModal(true)}
+                        onTyping={notifyTyping}
+                        onStopTyping={stopTyping}
                     />
                 </main>
             )}

@@ -1,9 +1,17 @@
-export default function MessageInput({ value, onChange, onSend, onAttach }) {
+export default function MessageInput({ value, onChange, onSend, onAttach, onTyping, onStopTyping }) {
     const canSend = value.trim().length > 0;
 
     const handleSend = () => {
         if (!canSend) return;
+        // Kucanje prestaje slanjem - bez ovoga bi indikator kod sagovornika
+        // stajao jos ceo prozor tajmera, iako je poruka vec stigla.
+        onStopTyping?.();
         onSend(value);
+    };
+
+    const handleChange = (e) => {
+        onChange(e.target.value);
+        onTyping?.();
     };
 
     return (
@@ -23,7 +31,8 @@ export default function MessageInput({ value, onChange, onSend, onAttach }) {
             <input
                 type="text"
                 value={value}
-                onChange={(e) => onChange(e.target.value)}
+                onChange={handleChange}
+                onBlur={() => onStopTyping?.()}
                 placeholder="Napiši poruku..."
                 aria-label="Poruka"
                 onKeyDown={(e) => {

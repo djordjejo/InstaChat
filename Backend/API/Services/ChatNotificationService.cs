@@ -25,6 +25,20 @@ namespace API.Services
                 .SendAsync("ReceiveMessage", message);
         }
 
+        public async Task MessageUpdatedAsync(Guid conversationId, MessageDto message)
+        {
+            await _hubContext.Clients
+                .Group(conversationId.ToString())
+                .SendAsync("MessageUpdated", message);
+        }
+
+        public async Task MessageDeletedAsync(Guid conversationId, Guid messageId)
+        {
+            await _hubContext.Clients
+                .Group(conversationId.ToString())
+                .SendAsync("MessageDeleted", new { messageId, conversationId });
+        }
+
         public async Task ConversationCreatedAsync(Guid conversationId, IEnumerable<Guid> memberIds)
         {
             var userIds = memberIds.Select(id => id.ToString()).ToList();

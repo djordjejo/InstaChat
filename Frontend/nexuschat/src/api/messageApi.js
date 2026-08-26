@@ -19,3 +19,17 @@ export const sendImageMessage = async (chatId, file, content) => {
     const response = await axiosInstance.post("/message/send-image", formData);
     return response.data;
 };
+
+// Vraca izmenjenu poruku BEZ priloga - izmena ih ne dira, pa ih backend i ne
+// ucitava. Pozivalac zato spaja odgovor sa porukom koju vec ima.
+export const editMessage = async (messageId, content) => {
+    const response = await axiosInstance.put(`/message/edit/${messageId}`, {
+        content,
+    });
+    return response.data;
+};
+
+export const deleteMessage = async (messageId) => {
+    const response = await axiosInstance.delete(`/message/${messageId}`);
+    return response.data;
+};

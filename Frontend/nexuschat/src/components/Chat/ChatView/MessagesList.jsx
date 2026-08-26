@@ -3,7 +3,7 @@ import MessageBubble from "./MessageBubble";
 import { useAuth } from "../../../context/AuthContext";
 import { formatDayLabel, isSameDay } from "../../../utility/formatTime";
 
-export default function MessagesList({ messages, memberAvatars }) {
+export default function MessagesList({ messages, memberAvatars, onEditMessage, onDeleteMessage }) {
     const { user } = useAuth();
     const messagesEndRef = useRef(null);
 
@@ -61,6 +61,8 @@ export default function MessagesList({ messages, memberAvatars }) {
                                 isMyMessage={isMyMessage}
                                 showMeta={showMeta}
                                 avatarUrl={memberAvatars?.get(message.senderId?.toLowerCase()) ?? null}
+                                onEdit={onEditMessage}
+                                onDelete={onDeleteMessage}
                             />
                         </div>
                     </div>
