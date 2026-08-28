@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Read(//c/Users/Dell/Desktop/2026/ChatApp/Backend/**)",
-      "Read(//c/Users/Dell/Desktop/2026/ChatApp/**)"
-    ]
-  }
-}
