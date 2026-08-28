@@ -14,7 +14,7 @@ dist-ssr
 
 # Editor directories and files
 .vscode/*
-.claude
+.claude/
 !.vscode/extensions.json
 .idea
 .DS_Store
@@ -28,4 +28,3 @@ dist-ssr
 # Lokalna odstupanja od .env (port, host). .env je u repou namerno.
 .env.local
 .env.*.local
-
